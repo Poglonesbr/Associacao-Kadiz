@@ -9,6 +9,7 @@
     "lint": "next lint --dir src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"prisma/**/*.ts\" \"package.json\" \".prettierrc.json\" \"*.{mjs,yml,yaml}\" \"README.md\"",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "prisma db seed"
   },
@@ -27,6 +28,7 @@
     "lucide-react": "^1.57.0",
     "next": "^14.2.35",
     "next-auth": "^4.24.15",
+    "pdfkit": "^0.20.2",
     "prisma": "^6.19.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -37,16 +39,21 @@
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/pdfkit": "^0.17.6",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
     "playwright-core": "^1.64.1",
-    "postcss": "^8",
+    "postcss": "^8.5.30",
+    "prettier": "^3.9.10",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
+  },
+  "overrides": {
+    "postcss": "^8.5.30"
   }
 }

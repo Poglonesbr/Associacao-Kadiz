@@ -27,6 +27,7 @@ Aplicação interna para gestão da Associação Kadiz. Acesso exclusivo à equi
    ```
 
    O seed cria as sete contas iniciais apenas quando ainda não existem e preserva senhas já alteradas. Registros fictícios de demonstração só são criados com `SEED_DEMO=true`.
+
 4. Inicie a aplicação:
 
    ```sh
@@ -37,16 +38,16 @@ Aplicação interna para gestão da Associação Kadiz. Acesso exclusivo à equi
 
 ## Scripts
 
-| Comando | Descrição |
-| --- | --- |
-| `npm run dev` | Servidor de desenvolvimento |
-| `npm run build` | Build de produção |
-| `npm run start` | Servidor Next.js de produção |
-| `npm run lint` | ESLint |
-| `npm run typecheck` | TypeScript sem emissão |
-| `npm test` | Testes unitários Vitest |
-| `npm run db:migrate` | Aplica migrações pendentes |
-| `npm run db:seed` | Cria as contas iniciais e, se habilitado, dados demo |
+| Comando              | Descrição                                            |
+| -------------------- | ---------------------------------------------------- |
+| `npm run dev`        | Servidor de desenvolvimento                          |
+| `npm run build`      | Build de produção                                    |
+| `npm run start`      | Servidor Next.js de produção                         |
+| `npm run lint`       | ESLint                                               |
+| `npm run typecheck`  | TypeScript sem emissão                               |
+| `npm test`           | Testes unitários Vitest                              |
+| `npm run db:migrate` | Aplica migrações pendentes                           |
+| `npm run db:seed`    | Cria as contas iniciais e, se habilitado, dados demo |
 
 ## Deploy em VPS com Docker Compose
 
@@ -66,6 +67,7 @@ Aplicação interna para gestão da Associação Kadiz. Acesso exclusivo à equi
    ```
 
    O serviço da aplicação aguarda a saúde do PostgreSQL, aplica migrações, cria contas de equipe ausentes e inicia o Next.js. `SEED_DEMO=true` pode ser usado para carregar dados fictícios na primeira implantação.
+
 5. Os dados do PostgreSQL ficam no volume `postgres_data`; documentos enviados ficam em `./uploads`. Inclua ambos na política de backup. Não remova volumes ao atualizar o sistema.
 
 ## Segurança e dados

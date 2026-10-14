@@ -1,4 +1,5 @@
-import { ConstructionPage } from "@/components/construction-page";
+import { TechnicalDashboard } from "@/components/technical-module";
+
 export default function SocialWorkPage() {
-  return <ConstructionPage title="Serviço Social" permission="social-work" confidential />;
+  return <TechnicalDashboard area="SERVICO_SOCIAL" />;
 }

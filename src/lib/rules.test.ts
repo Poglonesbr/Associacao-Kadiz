@@ -12,7 +12,9 @@ describe("student and billing rules", () => {
     const records = [1, 2, 3].map((day) => ({ status: "FALTA", date: new Date(2026, 4, day) }));
     expect(hasDisengagementRisk(records, 2026)).toBe(true);
     expect(hasDisengagementRisk(records.slice(0, 2), 2026)).toBe(false);
-    expect(hasDisengagementRisk([...records, { status: "FALTA_JUSTIFICADA", date: new Date(2026, 4, 4) }], 2026)).toBe(true);
+    expect(hasDisengagementRisk([...records, { status: "FALTA_JUSTIFICADA", date: new Date(2026, 4, 4) }], 2026)).toBe(
+      true,
+    );
     expect(hasDisengagementRisk(records, 2025)).toBe(false);
   });
 

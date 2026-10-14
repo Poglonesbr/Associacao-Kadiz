@@ -1,4 +1,5 @@
-import { ConstructionPage } from "@/components/construction-page";
+import { TechnicalDashboard } from "@/components/technical-module";
+
 export default function PsychologyPage() {
-  return <ConstructionPage title="Psicologia" permission="psychology" confidential />;
+  return <TechnicalDashboard area="PSICOLOGIA" />;
 }

@@ -143,10 +143,63 @@ enum ReferralDestination {
 }
 
 enum ReferralStatus {
-  ABERTO
+  AGUARDANDO
   EM_ANDAMENTO
   CONCLUIDO
   CANCELADO
+}
+
+enum AtendidoStatus {
+  ATIVO
+  ENCERRADO
+}
+
+enum AtendidoOrigin {
+  DEMANDA_ESPONTANEA
+  ESCOLA
+  CONSELHO_TUTELAR
+  CRAS
+  EQUIPE_KADIZ
+  OUTRO
+}
+
+enum AtendidoExitType {
+  OBJETIVOS_ALCANCADOS
+  TRANSFERENCIA_REDE
+  EVASAO
+  DESLIGAMENTO
+}
+
+enum PiaAreaType {
+  DOCUMENTACAO
+  SAUDE
+  SAUDE_MENTAL
+  EDUCACAO
+  CONVIVENCIA_FAMILIAR
+  ASSISTENCIA_SOCIAL
+  MORADIA
+  TRABALHO_RENDA_FAMILIA
+  PROTECAO_DIREITOS
+  OUTRAS
+}
+
+enum PiaAreaStatus {
+  SEM_DEMANDA
+  IDENTIFICADA
+  EM_ACOMPANHAMENTO
+  RESOLVIDA
+}
+
+enum PiaGoalEvaluation {
+  NAO_INICIADA
+  EM_ANDAMENTO
+  ALCANCADA
+  NAO_ALCANCADA
+}
+
+enum SignatureSignerType {
+  USUARIO
+  PROFISSIONAL
 }
 
 enum AccessAction {
@@ -213,26 +266,33 @@ enum EventCategory {
 }
 
 model User {
-  id                   String              @id @default(cuid())
-  name                 String
-  email                String              @unique
-  passwordHash         String
-  phone                String?
-  professionalRegistry String?
-  jobTitle             String?
-  role                 Role
-  active               Boolean             @default(true)
-  accessPsicologia     Boolean             @default(false)
-  accessServicoSocial  Boolean             @default(false)
-  createdAt            DateTime            @default(now())
-  turmas               Turma[]             @relation("TurmaProfessor")
-  documentsReviewed    StudentDocument[]   @relation("DocumentReviewer")
-  attendanceSessions   AttendanceSession[] @relation("AttendanceTakenBy")
-  accessLogs           AccessLog[]
-  tasksAssigned        Task[]              @relation("TaskAssignee")
-  tasksCreated         Task[]              @relation("TaskCreator")
-  financeEntries       FinanceEntry[]
-  stockMovements       StockMovement[]
+  id                    String              @id @default(cuid())
+  name                  String
+  email                 String              @unique
+  passwordHash          String
+  phone                 String?
+  professionalRegistry  String?
+  jobTitle              String?
+  role                  Role
+  active                Boolean             @default(true)
+  accessPsicologia      Boolean             @default(false)
+  accessServicoSocial   Boolean             @default(false)
+  createdAt             DateTime            @default(now())
+  turmas                Turma[]             @relation("TurmaProfessor")
+  documentsReviewed     StudentDocument[]   @relation("DocumentReviewer")
+  attendanceSessions    AttendanceSession[] @relation("AttendanceTakenBy")
+  accessLogs            AccessLog[]
+  tasksAssigned         Task[]              @relation("TaskAssignee")
+  tasksCreated          Task[]              @relation("TaskCreator")
+  financeEntries        FinanceEntry[]
+  stockMovements        StockMovement[]
+  atendidosResponsaveis Atendido[]          @relation("AtendidoResponsible")
+  atendidosCreated      Atendido[]          @relation("AtendidoCreator")
+  atendimentos          Atendimento[]       @relation("AtendimentoProfessional")
+  evolucoesAuthored     Evolucao[]          @relation("EvolucaoAuthor")
+  piaReviewsAuthored    PiaReview[]         @relation("PiaReviewAuthor")
+  piaSignatures         PiaSignature[]      @relation("SignatureUser")
+  atendidoChanges       AtendidoChange[]
 }
 
 model Polo {
@@ -342,9 +402,190 @@ model Aluno {
   attendanceRecords    AttendanceRecord[]
   stockMovements       StockMovement[]
   invoices             Invoice[]
+  atendido             Atendido?
 
   @@index([fullName])
   @@index([poloId, turmaId, vinculo, status])
+}
+
+model Atendido {
+  id                   String            @id @default(cuid())
+  alunoId              String            @unique
+  status               AtendidoStatus    @default(ATIVO)
+  ingressoDate         DateTime          @db.Date
+  origem               AtendidoOrigin?
+  responsavelTecnicoId String?
+  nextReviewDate       DateTime?         @db.Date
+  closeDate            DateTime?         @db.Date
+  closeType            AtendidoExitType?
+  closeReason          String?           @db.Text
+  familyIncome         Decimal?          @db.Decimal(10, 2)
+  incomeSources        String?           @db.Text
+  nis                  String?
+  bolsaFamilia         Boolean           @default(false)
+  otherBenefits        String?           @db.Text
+  crasReference        String?
+  conselhoTutelar      Boolean           @default(false)
+  conselhoTutelarNotes String?           @db.Text
+  housingType          HousingType?
+  housingNotes         String?           @db.Text
+  vulnerabilities      String[]          @default([])
+  currentSituation     String?           @db.Text
+  familyHistory        String?           @db.Text
+  potentialities       String?           @db.Text
+  createdById          String
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  aluno                Aluno             @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  responsavelTecnico   User?             @relation("AtendidoResponsible", fields: [responsavelTecnicoId], references: [id], onDelete: SetNull)
+  createdBy            User              @relation("AtendidoCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  areas                PiaArea[]
+  goals                PiaGoal[]
+  encaminhamentos      Encaminhamento[]
+  atendimentos         Atendimento[]
+  evolucoes            Evolucao[]
+  reviews              PiaReview[]
+  signatures           PiaSignature[]
+  changes              AtendidoChange[]
+  pdfCopies            PiaPdf[]
+
+  @@index([status, nextReviewDate])
+  @@index([responsavelTecnicoId])
+}
+
+model PiaArea {
+  id               String        @id @default(cuid())
+  atendidoId       String
+  area             PiaAreaType
+  necessidade      String?       @db.Text
+  acoes            String?       @db.Text
+  prazoResponsavel String?       @db.Text
+  status           PiaAreaStatus @default(SEM_DEMANDA)
+  atendido         Atendido      @relation(fields: [atendidoId], references: [id], onDelete: Cascade)
+
+  @@unique([atendidoId, area])
+}
+
+model PiaGoal {
+  id         String            @id @default(cuid())
+  atendidoId String
+  objetivo   String
+  meta       String?           @db.Text
+  acoes      String?           @db.Text
+  prazo      DateTime?         @db.Date
+  avaliacao  PiaGoalEvaluation @default(NAO_INICIADA)
+  order      Int               @default(0)
+  atendido   Atendido          @relation(fields: [atendidoId], references: [id], onDelete: Cascade)
+
+  @@index([atendidoId, order])
+}
+
+model Encaminhamento {
+  id                String              @id @default(cuid())
+  atendidoId        String
+  area              Area
+  destination       ReferralDestination
+  destinationDetail String?
+  reason            String              @db.Text
+  date              DateTime            @db.Date
+  returnNotes       String?             @db.Text
+  status            ReferralStatus      @default(AGUARDANDO)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  atendido          Atendido            @relation(fields: [atendidoId], references: [id], onDelete: Cascade)
+
+  @@index([atendidoId, date])
+  @@index([area, status, date])
+}
+
+model Atendimento {
+  id             String            @id @default(cuid())
+  area           Area
+  type           AtendimentoType
+  date           DateTime          @db.Date
+  startTime      String?
+  durationMin    Int?
+  status         AtendimentoStatus @default(AGENDADO)
+  summary        String?           @db.Text
+  professionalId String
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  atendidos      Atendido[]
+  professional   User              @relation("AtendimentoProfessional", fields: [professionalId], references: [id], onDelete: Restrict)
+
+  @@index([area, date, status])
+  @@index([professionalId, date])
+}
+
+model Evolucao {
+  id         String   @id @default(cuid())
+  atendidoId String
+  area       Area
+  authorId   String
+  date       DateTime @db.Date
+  content    String   @db.Text
+  newGoals   String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  atendido   Atendido @relation(fields: [atendidoId], references: [id], onDelete: Cascade)
+  author     User     @relation("EvolucaoAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([atendidoId, date])
+  @@index([area, date])
+}
+
+model PiaReview {
+  id          String   @id @default(cuid())
+  atendidoId  String
+  date        DateTime @db.Date
+  changes     String   @db.Text
+  newGoals    String?  @db.Text
+  responsavel String?
+  authorId    String
+  createdAt   DateTime @default(now())
+  atendido    Atendido @relation(fields: [atendidoId], references: [id], onDelete: Cascade)
+  author      User     @relation("PiaReviewAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([atendidoId, date])
+}
+
+model PiaSignature {
+  id           String              @id @default(cuid())
+  atendidoId   String
+  signerType   SignatureSignerType
+  signerName   String
+  userId       String?
+  imageDataUrl String              @db.Text
+  signedAt     DateTime            @default(now())
+  atendido     Atendido            @relation(fields: [atendidoId], references: [id], onDelete: Cascade)
+  user         User?               @relation("SignatureUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([atendidoId, signedAt])
+}
+
+model AtendidoChange {
+  id         String   @id @default(cuid())
+  atendidoId String
+  userId     String?
+  section    String
+  field      String
+  oldValue   String?  @db.Text
+  newValue   String?  @db.Text
+  createdAt  DateTime @default(now())
+  atendido   Atendido @relation(fields: [atendidoId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([atendidoId, createdAt])
+}
+
+model PiaPdf {
+  id         String   @id @default(cuid())
+  atendidoId String
+  filePath   String
+  createdAt  DateTime @default(now())
+  atendido   Atendido @relation(fields: [atendidoId], references: [id], onDelete: Cascade)
+
+  @@index([atendidoId, createdAt])
 }
 
 model StudentDocument {

@@ -20,12 +20,20 @@ export async function GET(_request: Request, { params }: { params: { documentId:
   try {
     const user = await requirePermission("documents");
     const document = await prisma.studentDocument.findUnique({ where: { id: params.documentId } });
-    if (!document?.filePath || !document.fileName) return NextResponse.json({ error: "Arquivo não encontrado." }, { status: 404 });
+    if (!document?.filePath || !document.fileName)
+      return NextResponse.json({ error: "Arquivo não encontrado." }, { status: 404 });
     const uploadRoot = path.resolve(process.env.UPLOAD_DIR ?? "./uploads");
     const filePath = path.resolve(document.filePath);
-    if (!filePath.startsWith(`${uploadRoot}${path.sep}`)) return NextResponse.json({ error: "Caminho inválido." }, { status: 400 });
+    if (!filePath.startsWith(`${uploadRoot}${path.sep}`))
+      return NextResponse.json({ error: "Caminho inválido." }, { status: 400 });
     const data = await readFile(filePath);
-    await logAccess({ userId: user.id, action: "VIEW", resource: "StudentDocument", resourceId: document.id, alunoId: document.alunoId });
+    await logAccess({
+      userId: user.id,
+      action: "VIEW",
+      resource: "StudentDocument",
+      resourceId: document.id,
+      alunoId: document.alunoId,
+    });
     const extension = path.extname(filePath).toLowerCase();
     return new NextResponse(data, {
       headers: {

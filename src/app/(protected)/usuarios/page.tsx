@@ -1,15 +1,100 @@
-import { PageHeader, Panel, DataTable, StatusBadge, Field, SelectField, Button } from "@/components/ui";
-import { createUser, editUser, resetUserPassword, setConfidentialAccess, toggleUserActive } from "@/app/actions";
+import { Search } from "lucide-react";
+import { AutoFilterForm } from "@/components/auto-filter-form";
+import { TechnicalAccessSwitch } from "@/components/technical-access-switch";
+import { UserDialog } from "@/components/user-dialog";
+import { DataTable, PageHeader, StatusBadge } from "@/components/ui";
+import { toggleUserActive } from "@/app/actions/usuarios";
 import { requirePermission } from "@/lib/guards";
+import { getPagination } from "@/lib/query-pagination";
+import { enumLabels, labelFor } from "@/lib/labels";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
-const roleLabels: Record<string, string> = { ADMIN: "Administrador", COORDENADOR: "Coordenação", SECRETARIA: "Secretaria", PROFESSOR: "Professor", PSICOLOGO: "Psicólogo(a)", ASSISTENTE_SOCIAL: "Assistente Social", FINANCEIRO: "Financeiro" };
-const roles = Object.entries(roleLabels).map(([value, label]) => [value, label] as [string, string]);
 
-export default async function UsersPage({ searchParams }: { searchParams: { q?: string } }) {
+const roles = ["ADMIN", "COORDENADOR", "SECRETARIA", "PROFESSOR", "PSICOLOGO", "ASSISTENTE_SOCIAL", "FINANCEIRO"].map(
+  (value) => [value, enumLabels[value]] as [string, string],
+);
+
+type SearchParams = { q?: string; page?: string; pageSize?: string };
+
+export default async function UsersPage({ searchParams }: { searchParams: SearchParams }) {
   await requirePermission("users");
-  const users = await prisma.user.findMany({ where: searchParams.q ? { OR: [{ name: { contains: searchParams.q, mode: "insensitive" } }, { email: { contains: searchParams.q, mode: "insensitive" } }] } : {}, orderBy: { name: "asc" }, take: 100 });
-  return <><PageHeader eyebrow="Gestão de acessos" title="Usuários do Sistema" /><Panel className="mb-5 p-5"><details><summary className="cursor-pointer font-medium text-emerald-400">+ Novo usuário</summary><form action={createUser} className="mt-4 grid gap-4 md:grid-cols-4"><Field label="Nome" name="name" required /><Field label="E-mail" name="email" type="email" required /><Field label="Senha inicial" name="password" type="password" required /><SelectField label="Perfil" name="role" options={roles} /><Field label="Cargo" name="jobTitle" /><Field label="Registro profissional" name="professionalRegistry" placeholder="Ex.: CRESS/SC 008736" /><div className="md:col-span-4"><Button>Criar usuário</Button></div></form></details></Panel><form className="mb-4"><input name="q" defaultValue={searchParams.q} placeholder="Buscar por nome ou e-mail..." className="w-full max-w-md rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm" /></form>
-    <DataTable headers={["Usuário", "Telefone", "Perfil", "Cargo / registro", "Acesso", "Permissões técnicas"]} count={users.length}>{users.map((user) => <tr key={user.id}><td className="px-4 py-3"><p className="font-medium">{user.name}</p><p className="text-xs text-neutral-500">{user.email}</p></td><td className="px-4 py-3 text-sm text-neutral-400">{user.phone ?? "—"}</td><td className="px-4 py-3"><StatusBadge tone={user.role === "ADMIN" ? "blue" : user.role === "PROFESSOR" ? "amber" : "green"}>{roleLabels[user.role]}</StatusBadge></td><td className="px-4 py-3 text-right"><div className="flex flex-col items-end gap-1"><StatusBadge tone={user.professionalRegistry ? "blue" : "neutral"}>{user.professionalRegistry ?? "Sem registro"}</StatusBadge><span className="text-xs text-neutral-400">{user.jobTitle ?? "—"}</span></div></td><td className="px-4 py-3"><form action={toggleUserActive}><input type="hidden" name="id" value={user.id} /><input type="hidden" name="active" value={String(!user.active)} /><button><StatusBadge tone={user.active ? "green" : "red"}>{user.active ? "Ativo" : "Inativo"}</StatusBadge></button></form></td><td className="px-4 py-3"><div className="flex flex-wrap gap-3"><form action={setConfidentialAccess}><input type="hidden" name="id" value={user.id} /><input type="hidden" name="flag" value="accessPsicologia" /><input type="hidden" name="enabled" value={String(!user.accessPsicologia)} /><button className="text-xs text-neutral-300">{user.accessPsicologia ? "🔓 Psicologia" : "🔒 Psicologia"}</button></form><form action={setConfidentialAccess}><input type="hidden" name="id" value={user.id} /><input type="hidden" name="flag" value="accessServicoSocial" /><input type="hidden" name="enabled" value={String(!user.accessServicoSocial)} /><button className="text-xs text-neutral-300">{user.accessServicoSocial ? "🔓 Serviço Social" : "🔒 Serviço Social"}</button></form><details className="basis-full"><summary className="cursor-pointer text-xs text-emerald-400">Editar / redefinir senha</summary><div className="mt-2 space-y-3 rounded-lg border border-neutral-800 p-3"><form action={editUser} className="flex flex-wrap gap-2"><input type="hidden" name="id" value={user.id} /><input name="name" defaultValue={user.name} className="rounded bg-neutral-950 px-2 py-1 text-xs" /><select name="role" defaultValue={user.role} className="rounded bg-neutral-950 px-2 py-1 text-xs">{roles.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select><input name="phone" defaultValue={user.phone ?? ""} placeholder="Telefone" className="rounded bg-neutral-950 px-2 py-1 text-xs" /><input name="jobTitle" defaultValue={user.jobTitle ?? ""} placeholder="Cargo" className="rounded bg-neutral-950 px-2 py-1 text-xs" /><input name="professionalRegistry" defaultValue={user.professionalRegistry ?? ""} placeholder="Registro profissional" className="rounded bg-neutral-950 px-2 py-1 text-xs" /><button className="text-xs text-emerald-400">Salvar</button></form><form action={resetUserPassword} className="flex gap-2"><input type="hidden" name="id" value={user.id} /><input name="password" type="password" minLength={8} placeholder="Nova senha" required className="rounded bg-neutral-950 px-2 py-1 text-xs" /><button className="text-xs text-emerald-400">Redefinir</button></form></div></details></div></td></tr>)}</DataTable></>;
+  const { page, pageSize, skip } = getPagination(searchParams.page, searchParams.pageSize);
+  const where = searchParams.q?.trim()
+    ? {
+        OR: [
+          { name: { contains: searchParams.q.trim(), mode: "insensitive" as const } },
+          { email: { contains: searchParams.q.trim(), mode: "insensitive" as const } },
+        ],
+      }
+    : {};
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({ where, orderBy: { name: "asc" }, skip, take: pageSize }),
+    prisma.user.count({ where }),
+  ]);
+
+  return (
+    <>
+      <PageHeader eyebrow="Gestão de acessos" title="Usuários do Sistema" action={<UserDialog roles={roles} />} />
+      <AutoFilterForm className="mb-4">
+        <label className="relative block w-full max-w-md">
+          <span className="sr-only">Buscar usuários por nome ou e-mail</span>
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+          <input
+            name="q"
+            defaultValue={searchParams.q}
+            placeholder="Buscar por nome ou e-mail..."
+            className="w-full rounded-lg border border-neutral-700 bg-neutral-950 py-2 pl-9 pr-3 text-sm"
+          />
+        </label>
+      </AutoFilterForm>
+      <DataTable
+        headers={["Usuário", "Telefone", "Perfil", "Cargo / registro", "Acesso", "Permissões técnicas", "Ações"]}
+        count={total}
+        page={page}
+        pageSize={pageSize}
+      >
+        {users.map((user) => (
+          <tr key={user.id}>
+            <td className="px-4 py-3">
+              <p className="font-medium">{user.name}</p>
+              <p className="text-xs text-neutral-500">{user.email}</p>
+            </td>
+            <td className="px-4 py-3 text-sm text-neutral-400">{user.phone ?? "—"}</td>
+            <td className="px-4 py-3">
+              <StatusBadge tone={user.role === "ADMIN" ? "blue" : user.role === "PROFESSOR" ? "amber" : "green"}>
+                {labelFor(user.role)}
+              </StatusBadge>
+            </td>
+            <td className="px-4 py-3 text-right">
+              <div className="flex flex-col items-end gap-1">
+                <StatusBadge tone={user.professionalRegistry ? "blue" : "neutral"}>
+                  {user.professionalRegistry ?? "Sem registro"}
+                </StatusBadge>
+                <span className="text-xs text-neutral-400">{user.jobTitle ?? "—"}</span>
+              </div>
+            </td>
+            <td className="px-4 py-3">
+              <form action={toggleUserActive}>
+                <input type="hidden" name="id" value={user.id} />
+                <input type="hidden" name="active" value={String(!user.active)} />
+                <button aria-label={user.active ? "Desativar usuário" : "Ativar usuário"}>
+                  <StatusBadge tone={user.active ? "green" : "red"}>{user.active ? "Ativo" : "Inativo"}</StatusBadge>
+                </button>
+              </form>
+            </td>
+            <td className="px-4 py-3">
+              <div className="flex flex-col gap-2">
+                <TechnicalAccessSwitch user={user} flag="accessPsicologia" label="Psicologia" />
+                <TechnicalAccessSwitch user={user} flag="accessServicoSocial" label="Serviço Social" />
+              </div>
+            </td>
+            <td className="px-4 py-3">
+              <UserDialog user={user} roles={roles} />
+            </td>
+          </tr>
+        ))}
+      </DataTable>
+    </>
+  );
 }
