@@ -14,12 +14,13 @@ const mimeTypes: Record<string, string> = {
   ".png": "image/png",
 };
 
-export async function GET(_request: Request, { params }: { params: { documentId: string } }) {
+export async function GET(_request: Request, { params }: { params: Promise<{ documentId: string }> }) {
+  const { documentId } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   try {
     const user = await requirePermission("documents");
-    const document = await prisma.studentDocument.findUnique({ where: { id: params.documentId } });
+    const document = await prisma.studentDocument.findUnique({ where: { id: documentId } });
     if (!document?.filePath || !document.fileName)
       return NextResponse.json({ error: "Arquivo não encontrado." }, { status: 404 });
     const uploadRoot = path.resolve(process.env.UPLOAD_DIR ?? "./uploads");

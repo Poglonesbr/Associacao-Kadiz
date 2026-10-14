@@ -17,14 +17,15 @@ const roles = ["ADMIN", "COORDENADOR", "SECRETARIA", "PROFESSOR", "PSICOLOGO", "
 
 type SearchParams = { q?: string; page?: string; pageSize?: string };
 
-export default async function UsersPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function UsersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const params = await searchParams;
   await requirePermission("users");
-  const { page, pageSize, skip } = getPagination(searchParams.page, searchParams.pageSize);
-  const where = searchParams.q?.trim()
+  const { page, pageSize, skip } = getPagination(params.page, params.pageSize);
+  const where = params.q?.trim()
     ? {
         OR: [
-          { name: { contains: searchParams.q.trim(), mode: "insensitive" as const } },
-          { email: { contains: searchParams.q.trim(), mode: "insensitive" as const } },
+          { name: { contains: params.q.trim(), mode: "insensitive" as const } },
+          { email: { contains: params.q.trim(), mode: "insensitive" as const } },
         ],
       }
     : {};
@@ -42,7 +43,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Search
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
           <input
             name="q"
-            defaultValue={searchParams.q}
+            defaultValue={params.q}
             placeholder="Buscar por nome ou e-mail..."
             className="w-full rounded-lg border border-neutral-700 bg-neutral-950 py-2 pl-9 pr-3 text-sm"
           />
@@ -68,9 +69,13 @@ export default async function UsersPage({ searchParams }: { searchParams: Search
             </td>
             <td className="px-4 py-3 text-right">
               <div className="flex flex-col items-end gap-1">
-                <StatusBadge tone={user.professionalRegistry ? "blue" : "neutral"}>
+                <span
+                  className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
+                    user.professionalRegistry ? "bg-blue-950 text-blue-300" : "bg-neutral-800 text-neutral-300"
+                  }`}
+                >
                   {user.professionalRegistry ?? "Sem registro"}
-                </StatusBadge>
+                </span>
                 <span className="text-xs text-neutral-400">{user.jobTitle ?? "—"}</span>
               </div>
             </td>

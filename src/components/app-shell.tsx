@@ -133,7 +133,9 @@ export function AppShell({
             );
           })}
         </nav>
-        {!collapsed && <p className="mt-auto px-5 py-5 text-xs text-neutral-600">©2026 Kadiz — Escola de Futebol</p>}
+        {!collapsed && (
+          <p className="mt-auto shrink-0 px-5 py-5 text-xs text-neutral-600">©2026 Kadiz — Escola de Futebol</p>
+        )}
       </aside>
       <div className="min-w-0 flex-1">
         <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-neutral-800 bg-[#111]/95 px-5 backdrop-blur">

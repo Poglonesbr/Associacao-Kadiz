@@ -115,6 +115,7 @@ export async function TechnicalDashboard({ area }: { area: TechnicalArea }) {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const yearStart = new Date(now.getFullYear(), 0, 1);
+  const nextYear = new Date(now.getFullYear() + 1, 0, 1);
   const lastYear = new Date(now.getFullYear(), now.getMonth() - 11, 1);
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -124,7 +125,7 @@ export async function TechnicalDashboard({ area }: { area: TechnicalArea }) {
         select: { status: true, ingressoDate: true, closeDate: true, nextReviewDate: true, closeType: true },
       }),
       prisma.atendimento.count({ where: { area, date: { gte: monthStart, lt: nextMonth } } }),
-      prisma.atendimento.count({ where: { area, date: { gte: yearStart } } }),
+      prisma.atendimento.count({ where: { area, date: { gte: yearStart, lt: nextYear } } }),
       prisma.piaArea.groupBy({
         by: ["area"],
         where: { status: { in: [PiaAreaStatus.IDENTIFICADA, PiaAreaStatus.EM_ACOMPANHAMENTO] } },
@@ -132,7 +133,7 @@ export async function TechnicalDashboard({ area }: { area: TechnicalArea }) {
       }),
       prisma.atendimento.groupBy({
         by: ["professionalId"],
-        where: { area, date: { gte: yearStart } },
+        where: { area, date: { gte: yearStart, lt: nextYear } },
         _count: { _all: true },
       }),
       prisma.encaminhamento.groupBy({
@@ -206,7 +207,7 @@ export async function TechnicalDashboard({ area }: { area: TechnicalArea }) {
         />
         <BarList
           title="Atendimentos por profissional"
-          subtitle={`Evoluções registradas no ano · ${now.getFullYear()}`}
+          subtitle={`Atendimentos registrados no ano · ${now.getFullYear()}`}
           values={professionalValues.length ? professionalValues : [["Sem atendimentos", 0]]}
         />
         <BarList

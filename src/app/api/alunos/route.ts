@@ -3,12 +3,15 @@ import { ptBR } from "date-fns/locale";
 import { NextResponse } from "next/server";
 import { getCategory } from "@/lib/category";
 import { labelFor } from "@/lib/labels";
+import { formatBrazilianCurrency } from "@/lib/money";
+import { canViewStudentFinancial } from "@/lib/permissions";
 import { requirePermission } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 import { buildStudentWhere } from "@/lib/student-query";
 
 export async function GET(request: Request) {
-  await requirePermission("students:view");
+  const user = await requirePermission("students:view");
+  const includeFinancial = canViewStudentFinancial(user);
   const { searchParams } = new URL(request.url);
   const students = await prisma.aluno.findMany({
     where: buildStudentWhere({
@@ -33,6 +36,7 @@ export async function GET(request: Request) {
     "Responsável",
     "Telefone",
     "Status",
+    ...(includeFinancial ? ["Mensalidade"] : []),
   ];
   const rows = students.map((student) => [
     student.matricula,
@@ -45,6 +49,7 @@ export async function GET(request: Request) {
     student.guardianName,
     student.guardianPhone ?? "",
     labelFor(student.status),
+    ...(includeFinancial ? [student.monthlyFee === null ? "" : formatBrazilianCurrency(student.monthlyFee)] : []),
   ]);
   const escape = (value: string) => {
     const safeValue = /^[=+\-@]/.test(value) ? `'${value}` : value;

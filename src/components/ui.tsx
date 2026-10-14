@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ListPagination } from "@/components/list-pagination";
 import { DateInput, TimeInput } from "@/components/date-input";
+import { CurrencyInput } from "@/components/currency-input";
 import { labelFor } from "@/lib/labels";
 
 export function PageHeader({ eyebrow, title, action }: { eyebrow: string; title: string; action?: ReactNode }) {
@@ -124,6 +125,11 @@ export function Field({
         defaultValue={defaultValue ? String(defaultValue) : ""}
         className={className}
       />
+    );
+  }
+  if (type === "currency") {
+    return (
+      <CurrencyInput label={label} name={name} defaultValue={defaultValue} required={required} className={className} />
     );
   }
   return (
@@ -254,10 +260,7 @@ export function LinkButton({
     danger: "bg-red-950 text-red-300 hover:bg-red-900",
   };
   return (
-    <Link
-      className={`inline-flex rounded-lg px-3.5 py-2 text-sm font-semibold ${styles[variant]}`}
-      href={href}
-    >
+    <Link className={`inline-flex rounded-lg px-3.5 py-2 text-sm font-semibold ${styles[variant]}`} href={href}>
       {children}
     </Link>
   );

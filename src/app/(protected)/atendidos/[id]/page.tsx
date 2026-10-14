@@ -18,12 +18,13 @@ import { prisma } from "@/lib/prisma";
 import { isAtendidoEligible } from "@/lib/technical-access";
 import { logAccess } from "@/lib/audit";
 
-export default async function AtendidoDetailPage({ params }: { params: { id: string } }) {
+export default async function AtendidoDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const user = await requireTecnico();
   const allowedAreas = getTechnicalAreas(user);
   if (!isTecnico(user)) redirect("/403");
   const record = await prisma.atendido.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       aluno: { include: { polo: true, turma: true } },
       areas: { orderBy: { area: "asc" } },
@@ -35,10 +36,13 @@ export default async function AtendidoDetailPage({ params }: { params: { id: str
         orderBy: { date: "desc" },
       },
       reviews: { include: { author: { select: { name: true } } }, orderBy: { date: "desc" } },
-      signatures: { orderBy: { signedAt: "desc" } },
+      signatures: {
+        include: { user: { select: { professionalRegistry: true } } },
+        orderBy: { signedAt: "desc" },
+      },
       changes: { include: { user: { select: { name: true } } }, orderBy: { createdAt: "desc" } },
       pdfCopies: { orderBy: { createdAt: "desc" } },
-      responsavelTecnico: { select: { name: true } },
+      responsavelTecnico: { select: { name: true, professionalRegistry: true } },
     },
   });
   if (!record || !isAtendidoEligible(record.aluno.vinculo)) redirect("/403");
@@ -80,7 +84,14 @@ export default async function AtendidoDetailPage({ params }: { params: { id: str
         <div className="flex flex-wrap gap-2 text-sm text-neutral-400">
           <span>{student.polo.name}</span>
           {student.turma && <span>· {student.turma.name}</span>}
-          {record.responsavelTecnico?.name && <span>· Técnico responsável: {record.responsavelTecnico.name}</span>}
+          {record.responsavelTecnico?.name && (
+            <span>
+              · Técnico responsável: {record.responsavelTecnico.name}
+              {record.responsavelTecnico.professionalRegistry
+                ? ` · ${record.responsavelTecnico.professionalRegistry}`
+                : ""}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <StatusBadge tone={record.status === "ATIVO" ? "green" : "neutral"}>{labelFor(record.status)}</StatusBadge>
@@ -159,6 +170,8 @@ export default async function AtendidoDetailPage({ params }: { params: { id: str
           addressNumber: student.addressNumber,
           neighborhood: student.neighborhood,
           city: student.city,
+          state: student.state,
+          postalCode: student.postalCode,
           school: student.school,
           schoolGrade: student.schoolGrade,
           schoolShift: student.schoolShift,
@@ -294,7 +307,9 @@ export default async function AtendidoDetailPage({ params }: { params: { id: str
             {record.signatures.map((signature) => (
               <div className="rounded-lg bg-neutral-950 p-3" key={signature.id}>
                 <p className="text-sm text-neutral-300">
-                  {signature.signerName} · {labelFor(signature.signerType)} · {formatBrazilianDate(signature.signedAt)}
+                  {signature.signerName}
+                  {signature.user?.professionalRegistry ? ` · ${signature.user.professionalRegistry}` : ""} ·{" "}
+                  {labelFor(signature.signerType)} · {formatBrazilianDate(signature.signedAt)}
                 </p>
                 <Image
                   className="mt-2 max-h-28 w-full object-contain"

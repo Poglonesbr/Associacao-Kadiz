@@ -348,6 +348,8 @@ model Aluno {
   addressNumber        String?
   neighborhood         String?
   city                 String?
+  state                String?
+  postalCode           String?
   school               String?
   schoolGrade          String?
   schoolShift          SchoolShift?

@@ -1,11 +1,12 @@
 import { TechnicalSection } from "@/components/technical-module";
 
-export default function SocialWorkSectionPage({
+export default async function SocialWorkSectionPage({
   params,
   searchParams,
 }: {
-  params: { section: string };
-  searchParams: Record<string, string | string[] | undefined>;
+  params: Promise<{ section: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  return <TechnicalSection area="SERVICO_SOCIAL" section={params.section} searchParams={searchParams} />;
+  const [{ section }, query] = await Promise.all([params, searchParams]);
+  return <TechnicalSection area="SERVICO_SOCIAL" section={section} searchParams={query} />;
 }

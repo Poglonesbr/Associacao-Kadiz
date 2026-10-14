@@ -1,11 +1,12 @@
 import { TechnicalSection } from "@/components/technical-module";
 
-export default function PsychologySectionPage({
+export default async function PsychologySectionPage({
   params,
   searchParams,
 }: {
-  params: { section: string };
-  searchParams: Record<string, string | string[] | undefined>;
+  params: Promise<{ section: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  return <TechnicalSection area="PSICOLOGIA" section={params.section} searchParams={searchParams} />;
+  const [{ section }, query] = await Promise.all([params, searchParams]);
+  return <TechnicalSection area="PSICOLOGIA" section={section} searchParams={query} />;
 }

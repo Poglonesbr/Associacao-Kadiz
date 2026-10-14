@@ -8,13 +8,17 @@ import { DataTable, EmptyState, Field, LinkButton, PageHeader, Panel, SelectFiel
 import { requirePermission } from "@/lib/guards";
 import { can, canViewStudentFinancial, isTecnico } from "@/lib/permissions";
 import { labelFor } from "@/lib/labels";
+import { formatBrazilianCurrency, formatBrazilianCurrencyInput } from "@/lib/money";
 import { hasDisengagementRisk } from "@/lib/rules";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 type Tab = "dados" | "familia" | "saude" | "autorizacoes" | "documentos" | "frequencia" | "financeiro" | "entregas";
-type Props = { params: { id: string }; searchParams: { tab?: string; edit?: string } };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string; edit?: string }>;
+};
 
 function Info({ label, value }: { label: string; value: unknown }) {
   return (
@@ -54,11 +58,12 @@ const weekdays = [
 ];
 
 export default async function StudentDetailPage({ params, searchParams }: Props) {
+  const [{ id }, query] = await Promise.all([params, searchParams]);
   const user = await requirePermission("students:view");
   const canEdit = can(user, "students:write");
   const canViewFinance = canViewStudentFinancial(user);
   const student = await prisma.aluno.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       polo: true,
       turma: true,
@@ -85,9 +90,9 @@ export default async function StudentDetailPage({ params, searchParams }: Props)
     ...(canViewFinance ? [{ key: "financeiro" as const, label: "Financeiro" }] : []),
     { key: "entregas", label: "Entregas" },
   ];
-  const requestedTab = searchParams.tab as Tab | undefined;
+  const requestedTab = query.tab as Tab | undefined;
   const activeTab = availableTabs.some((tab) => tab.key === requestedTab) ? requestedTab! : "dados";
-  const editing = searchParams.edit === "1" && canEdit;
+  const editing = query.edit === "1" && canEdit;
   const editLink = `/alunos/${student.id}?tab=${activeTab}&edit=1`;
   const viewLink = `/alunos/${student.id}?tab=${activeTab}`;
   const absences = student.attendanceRecords.filter((record) => record.status === "FALTA");
@@ -181,6 +186,8 @@ export default async function StudentDetailPage({ params, searchParams }: Props)
                 <Field label="Número" name="addressNumber" defaultValue={student.addressNumber ?? ""} />
                 <Field label="Bairro" name="neighborhood" defaultValue={student.neighborhood ?? ""} />
                 <Field label="Cidade" name="city" defaultValue={student.city ?? ""} />
+                <Field label="UF" name="state" defaultValue={student.state ?? ""} />
+                <Field label="CEP" name="postalCode" defaultValue={student.postalCode ?? ""} />
                 <Field label="Escola" name="school" defaultValue={student.school ?? ""} />
                 <Field label="Série escolar" name="schoolGrade" defaultValue={student.schoolGrade ?? ""} />
                 <SelectField
@@ -369,7 +376,12 @@ export default async function StudentDetailPage({ params, searchParams }: Props)
           {activeTab === "financeiro" && canViewFinance && (
             <Section title="Cobrança e dados fiscais">
               <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Mensalidade (R$)" name="monthlyFee" defaultValue={student.monthlyFee?.toString() ?? ""} />
+                <Field
+                  label="Mensalidade (R$)"
+                  name="monthlyFee"
+                  type="currency"
+                  defaultValue={formatBrazilianCurrencyInput(student.monthlyFee)}
+                />
                 <Field
                   label="Dia de cobrança"
                   name="billingDay"
@@ -424,7 +436,14 @@ export default async function StudentDetailPage({ params, searchParams }: Props)
               <Info label="Naturalidade" value={student.naturalidade} />
               <Info
                 label="Endereço"
-                value={[student.address, student.addressNumber, student.neighborhood, student.city]
+                value={[
+                  student.address,
+                  student.addressNumber,
+                  student.neighborhood,
+                  student.city,
+                  student.state,
+                  student.postalCode ? `CEP ${student.postalCode}` : null,
+                ]
                   .filter(Boolean)
                   .join(", ")}
               />
@@ -567,7 +586,7 @@ export default async function StudentDetailPage({ params, searchParams }: Props)
           {activeTab === "financeiro" && canViewFinance && (
             <div className="space-y-4">
               <Panel className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3">
-                <Info label="Mensalidade" value={student.monthlyFee ? `R$ ${student.monthlyFee.toString()}` : "—"} />
+                <Info label="Mensalidade" value={formatBrazilianCurrency(student.monthlyFee)} />
                 <Info label="Dia de cobrança" value={student.billingDay} />
                 <Info label="Nome para nota" value={student.invoiceName} />
                 <Info label="CPF para nota" value={student.invoiceCpf} />
@@ -577,7 +596,7 @@ export default async function StudentDetailPage({ params, searchParams }: Props)
                 {student.invoices.map((invoice) => (
                   <tr key={invoice.id}>
                     <td className="px-4 py-3">{format(invoice.dueDate, "dd/MM/yyyy", { locale: ptBR })}</td>
-                    <td className="px-4 py-3">R$ {invoice.amount.toString()}</td>
+                    <td className="px-4 py-3">{formatBrazilianCurrency(invoice.amount)}</td>
                     <td className="px-4 py-3">
                       <StatusBadge
                         tone={invoice.status === "PAGO" ? "green" : invoice.status === "PENDENTE" ? "amber" : "neutral"}

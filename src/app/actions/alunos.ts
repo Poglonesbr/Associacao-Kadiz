@@ -9,6 +9,7 @@ import { logAccess } from "@/lib/audit";
 import { parseBrazilianDate } from "@/lib/dates";
 import { requirePermission } from "@/lib/guards";
 import { canViewStudentFinancial } from "@/lib/permissions";
+import { parseBrazilianCurrency } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 
 const value = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
@@ -60,6 +61,9 @@ export async function createStudent(form: FormData) {
     data.vinculo === "PROJETO_SOCIAL" && value(form, "householdSize")
       ? z.coerce.number().int().min(1).max(50).parse(value(form, "householdSize"))
       : null;
+  const monthlyFeeInput = data.vinculo === "PARTICULAR" ? value(form, "monthlyFee") : "";
+  const monthlyFee = parseBrazilianCurrency(monthlyFeeInput);
+  if (monthlyFeeInput && (monthlyFee === null || monthlyFee < 0)) throw new Error("Mensalidade inválida.");
   const year = new Date().getFullYear();
   const sequence = await prisma.aluno.count({ where: { matricula: { startsWith: `K${year}-` } } });
   const student = await prisma.aluno.create({
@@ -79,6 +83,8 @@ export async function createStudent(form: FormData) {
       addressNumber: optional(value(form, "addressNumber")),
       neighborhood: optional(value(form, "neighborhood")),
       city: optional(value(form, "city")),
+      state: optional(value(form, "state")),
+      postalCode: optional(value(form, "postalCode")),
       school: optional(value(form, "school")),
       schoolGrade: optional(value(form, "schoolGrade")),
       schoolShift: optional(value(form, "schoolShift")) as "MATUTINO" | "VESPERTINO" | null,
@@ -114,10 +120,7 @@ export async function createStudent(form: FormData) {
       authTrips: form.get("authTrips") === "on",
       authImage: form.get("authImage") === "on",
       authTermsAccepted: form.get("authTermsAccepted") === "on",
-      monthlyFee:
-        data.vinculo === "PARTICULAR" && value(form, "monthlyFee")
-          ? Number(value(form, "monthlyFee").replace(",", "."))
-          : undefined,
+      monthlyFee: monthlyFee ?? undefined,
       billingDay:
         data.vinculo === "PARTICULAR" && value(form, "billingDay") ? Number(value(form, "billingDay")) : undefined,
       invoiceName: optional(value(form, "invoiceName")),
@@ -183,6 +186,8 @@ export async function updateStudent(form: FormData) {
     "addressNumber",
     "neighborhood",
     "city",
+    "state",
+    "postalCode",
     "school",
     "schoolGrade",
     "position",
@@ -257,9 +262,9 @@ export async function updateStudent(form: FormData) {
     }
   }
   if (form.has("monthlyFee")) {
-    const raw = value(form, "monthlyFee").replace(",", ".");
-    const amount = raw ? Number(raw) : null;
-    if (amount !== null && (!Number.isFinite(amount) || amount < 0)) throw new Error("Mensalidade inválida.");
+    const raw = value(form, "monthlyFee");
+    const amount = parseBrazilianCurrency(raw);
+    if (raw && (amount === null || amount < 0)) throw new Error("Mensalidade inválida.");
     data.monthlyFee = amount;
   }
   if (form.has("billingDay")) {

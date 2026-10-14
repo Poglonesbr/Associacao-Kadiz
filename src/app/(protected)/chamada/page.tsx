@@ -14,24 +14,25 @@ export const dynamic = "force-dynamic";
 
 type SearchParams = { turma?: string; date?: string; tab?: string; page?: string; pageSize?: string };
 
-export default async function AttendancePage({ searchParams }: { searchParams: SearchParams }) {
+export default async function AttendancePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const params = await searchParams;
   const user = await requirePermission("attendance");
   const tabs = (
     <div className="mb-5 flex gap-4 border-b border-neutral-800 text-sm">
       <Link
-        className={`pb-3 ${!searchParams.tab || searchParams.tab === "registro" ? "border-b-2 border-emerald-400 text-white" : "text-neutral-400"}`}
+        className={`pb-3 ${!params.tab || params.tab === "registro" ? "border-b-2 border-emerald-400 text-white" : "text-neutral-400"}`}
         href="/chamada"
       >
         Registrar presença
       </Link>
       <Link
-        className={`pb-3 ${searchParams.tab === "alerts" ? "border-b-2 border-emerald-400 text-white" : "text-neutral-400"}`}
+        className={`pb-3 ${params.tab === "alerts" ? "border-b-2 border-emerald-400 text-white" : "text-neutral-400"}`}
         href="/chamada?tab=alerts"
       >
         Alertas
       </Link>
       <Link
-        className={`pb-3 ${searchParams.tab === "history" ? "border-b-2 border-emerald-400 text-white" : "text-neutral-400"}`}
+        className={`pb-3 ${params.tab === "history" ? "border-b-2 border-emerald-400 text-white" : "text-neutral-400"}`}
         href="/chamada?tab=history"
       >
         Histórico
@@ -39,8 +40,8 @@ export default async function AttendancePage({ searchParams }: { searchParams: S
     </div>
   );
 
-  if (searchParams.tab === "history") {
-    const { page, pageSize, skip } = getPagination(searchParams.page, searchParams.pageSize);
+  if (params.tab === "history") {
+    const { page, pageSize, skip } = getPagination(params.page, params.pageSize);
     const where = user.role === "PROFESSOR" ? { turma: { professorId: user.id } } : {};
     const [sessions, total] = await Promise.all([
       prisma.attendanceSession.findMany({
@@ -95,16 +96,14 @@ export default async function AttendancePage({ searchParams }: { searchParams: S
 
   const now = new Date();
   const today =
-    searchParams.date && parseBrazilianDate(searchParams.date)
-      ? parseBrazilianDate(searchParams.date)!
-      : format(now, "yyyy-MM-dd");
+    params.date && parseBrazilianDate(params.date) ? parseBrazilianDate(params.date)! : format(now, "yyyy-MM-dd");
   const yearStart = new Date(now.getFullYear(), 0, 1);
   const turmas = await prisma.turma.findMany({
     where: { active: true, ...(user.role === "PROFESSOR" ? { professorId: user.id } : {}) },
     include: { polo: true },
     orderBy: [{ polo: { name: "asc" } }, { name: "asc" }],
   });
-  const selected = turmas.find((turma) => turma.id === searchParams.turma);
+  const selected = turmas.find((turma) => turma.id === params.turma);
   const classId = selected?.id ?? turmas[0]?.id;
   const [students, saved, absences] = classId
     ? await Promise.all([
@@ -161,7 +160,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: S
         </label>
         <button className="self-end rounded-lg bg-neutral-800 px-4 py-2 text-sm">Selecionar</button>
       </form>
-      {searchParams.tab === "alerts" ? (
+      {params.tab === "alerts" ? (
         <Panel className="p-5">
           <h2 className="mb-4 text-lg font-semibold">Alertas de frequência</h2>
           {alerts.length ? (

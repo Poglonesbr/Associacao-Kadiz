@@ -1,6 +1,7 @@
 import { FileText, Users, Wallet, TriangleAlert } from "lucide-react";
 import { PageHeader, Panel } from "@/components/ui";
 import { requirePermission } from "@/lib/guards";
+import { formatBrazilianCurrency } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -41,7 +42,7 @@ export default async function DashboardPage() {
       icon: Wallet,
       label: "Faturas pendentes",
       number: pendingInvoices.toString(),
-      detail: `R$ ${Number(overdueInvoices._sum.amount ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em atraso`,
+      detail: `${formatBrazilianCurrency(overdueInvoices._sum.amount ?? 0)} em atraso`,
     },
   ];
   return (

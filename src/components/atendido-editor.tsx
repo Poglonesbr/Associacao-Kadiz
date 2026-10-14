@@ -6,6 +6,7 @@ import { DateInput } from "@/components/date-input";
 import { Button, Field, SelectField } from "@/components/ui";
 import { formatBrazilianDate, maskBrazilianDate } from "@/lib/dates";
 import { labelFor } from "@/lib/labels";
+import { formatBrazilianCurrencyInput } from "@/lib/money";
 
 type AreaRow = {
   area: string;
@@ -31,6 +32,8 @@ type Student = {
   addressNumber: string | null;
   neighborhood: string | null;
   city: string | null;
+  state: string | null;
+  postalCode: string | null;
   school: string | null;
   schoolGrade: string | null;
   schoolShift: string | null;
@@ -87,7 +90,9 @@ export function AtendidoEditor({
   technicalUsers: TechnicalUser[];
 }) {
   const [areas, setAreas] = useState(initialAreas);
-  const [goals, setGoals] = useState(initialGoals);
+  const [goals, setGoals] = useState(
+    initialGoals.map((goal) => ({ ...goal, prazo: goal.prazo ? formatBrazilianDate(goal.prazo) : null })),
+  );
   const vulnerabilityOptions = [
     "VIOLENCIA",
     "NEGLIGENCIA",
@@ -131,8 +136,16 @@ export function AtendidoEditor({
             ["Pai", student.fatherName ?? "—"],
             [
               "Endereço",
-              [student.address, student.addressNumber, student.neighborhood, student.city].filter(Boolean).join(", ") ||
-                "—",
+              [
+                student.address,
+                student.addressNumber,
+                student.neighborhood,
+                student.city,
+                student.state,
+                student.postalCode ? `CEP ${student.postalCode}` : null,
+              ]
+                .filter(Boolean)
+                .join(", ") || "—",
             ],
             ["Escola", student.school ?? "—"],
             [
@@ -189,8 +202,8 @@ export function AtendidoEditor({
           <Field
             label="Renda familiar (R$)"
             name="familyIncome"
-            type="text"
-            defaultValue={record.familyIncome ?? ""}
+            type="currency"
+            defaultValue={formatBrazilianCurrencyInput(record.familyIncome)}
             placeholder="0,00"
           />
           <Field label="Fontes de renda" name="incomeSources" defaultValue={record.incomeSources ?? ""} />

@@ -74,6 +74,14 @@ const names = [
   "Atleta Demonstração 39",
   "Atleta Demonstração 40",
 ];
+const demoAddress = (index: number) => ({
+  address: ["Rua das Palmeiras", "Rua Monte Alegre", "Rua São Paulo", "Rua Rio de Janeiro"][index % 4],
+  addressNumber: String(100 + index),
+  neighborhood: ["Centro", "Monte Alegre", "Tabuleiro", "Santa Regina"][index % 4],
+  city: "Camboriú",
+  state: "SC",
+  postalCode: `88340-${String(index + 1).padStart(3, "0")}`,
+});
 const documentTypes = [
   "FICHA_CADASTRAL",
   "RG",
@@ -296,6 +304,16 @@ async function main() {
   }
   if (process.env.SEED_DEMO !== "true") return;
   if ((await prisma.aluno.count()) > 0) {
+    const existingDemoStudents = await prisma.aluno.findMany({
+      where: { fullName: { in: names } },
+      select: { id: true, fullName: true },
+    });
+    for (const student of existingDemoStudents) {
+      await prisma.aluno.update({
+        where: { id: student.id },
+        data: demoAddress(names.indexOf(student.fullName)),
+      });
+    }
     await seedTechnicalDemo(users);
     return;
   }
@@ -352,7 +370,7 @@ async function main() {
         birthDate,
         sex: index % 2 ? "Feminino" : "Masculino",
         householdSize: vinculo === "PROJETO_SOCIAL" ? 4 + (index % 3) : undefined,
-        city: "Camboriú",
+        ...demoAddress(index),
         school: `Escola Municipal ${(index % 4) + 1}`,
         schoolGrade: `${(index % 9) + 1}º ano`,
         guardianName: `Responsável Demo ${String(index + 1).padStart(2, "0")}`,

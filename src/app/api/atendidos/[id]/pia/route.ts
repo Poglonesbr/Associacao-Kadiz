@@ -6,6 +6,7 @@ import { AccessAction, Area } from "@prisma/client";
 import { NextRequest } from "next/server";
 import { formatBrazilianDate } from "@/lib/dates";
 import { labelFor } from "@/lib/labels";
+import { formatBrazilianCurrency } from "@/lib/money";
 import { getTechnicalAreas, isTecnico } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { requireTecnico } from "@/lib/guards";
@@ -29,8 +30,12 @@ async function loadRecord(id: string, areas: Area[]) {
         include: { author: { select: { name: true } } },
         orderBy: { date: "asc" },
       },
+      responsavelTecnico: { select: { name: true, jobTitle: true, professionalRegistry: true } },
       reviews: { include: { author: { select: { name: true } } }, orderBy: { date: "asc" } },
-      signatures: { orderBy: { signedAt: "asc" } },
+      signatures: {
+        include: { user: { select: { professionalRegistry: true } } },
+        orderBy: { signedAt: "asc" },
+      },
     },
   });
 }
@@ -66,7 +71,9 @@ async function renderPdf(record: PdfRecord) {
   doc.font("Helvetica").fontSize(9).fillColor("#555").text("ASSOCIAÇÃO KADIZ · DOCUMENTO CONFIDENCIAL");
   doc.moveDown(0.8);
 
-  heading(1, "Identificação e dados socioeconômicos");
+  let sectionNumber = 0;
+  const nextHeading = (title: string) => heading(++sectionNumber, title);
+  nextHeading("Identificação e dados socioeconômicos");
   line("Nome", record.aluno.fullName);
   line("Matrícula", record.aluno.matricula);
   line("Nascimento", formatBrazilianDate(record.aluno.birthDate));
@@ -78,7 +85,14 @@ async function renderPdf(record: PdfRecord) {
   line("Pai", record.aluno.fatherName);
   line(
     "Endereço",
-    [record.aluno.address, record.aluno.addressNumber, record.aluno.neighborhood, record.aluno.city]
+    [
+      record.aluno.address,
+      record.aluno.addressNumber,
+      record.aluno.neighborhood,
+      record.aluno.city,
+      record.aluno.state,
+      record.aluno.postalCode ? `CEP ${record.aluno.postalCode}` : null,
+    ]
       .filter(Boolean)
       .join(", "),
   );
@@ -91,8 +105,20 @@ async function renderPdf(record: PdfRecord) {
   );
   line("Pessoas na residência", record.aluno.householdSize?.toString());
   line("Ingresso no acompanhamento", formatBrazilianDate(record.ingressoDate));
+  line(
+    "Profissional responsável",
+    record.responsavelTecnico
+      ? [
+          record.responsavelTecnico.name,
+          record.responsavelTecnico.jobTitle,
+          record.responsavelTecnico.professionalRegistry,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : null,
+  );
   line("Origem", record.origem ? labelFor(record.origem) : null);
-  line("Renda familiar", record.familyIncome ? `R$ ${record.familyIncome.toString()}` : null);
+  line("Renda familiar", record.familyIncome === null ? null : formatBrazilianCurrency(record.familyIncome));
   line("Fontes de renda", record.incomeSources);
   line("NIS", record.nis);
   line("Bolsa Família", record.bolsaFamilia ? "Sim" : "Não");
@@ -103,76 +129,97 @@ async function renderPdf(record: PdfRecord) {
   line("Observações sobre moradia", record.housingNotes);
   line("Vulnerabilidades", record.vulnerabilities.map(labelFor).join(", "));
 
-  heading(2, "Situação atual e histórico");
-  line("Situação atual", record.currentSituation);
-  line("Histórico familiar", record.familyHistory);
-  line("Potencialidades", record.potentialities);
-
-  heading(3, "Áreas de atendimento e avaliação");
-  for (const area of record.areas) {
-    doc.font("Helvetica-Bold").text(labelFor(area.area));
-    line("Situação / necessidade", area.necessidade);
-    line("Ações / encaminhamentos", area.acoes);
-    line("Prazo / responsável", area.prazoResponsavel);
-    doc.moveDown(0.25);
+  if ([record.currentSituation, record.familyHistory, record.potentialities].some((value) => value?.trim())) {
+    nextHeading("Situação atual e histórico");
+    line("Situação atual", record.currentSituation);
+    line("Histórico familiar", record.familyHistory);
+    line("Potencialidades", record.potentialities);
   }
 
-  heading(4, "Objetivos e metas");
-  for (const goal of record.goals) {
-    doc.font("Helvetica-Bold").text(goal.objetivo);
-    line("Meta", goal.meta);
-    line("Ações", goal.acoes);
-    line("Prazo", formatBrazilianDate(goal.prazo));
-    line("Avaliação", labelFor(goal.avaliacao));
-    doc.moveDown(0.25);
+  const populatedAreas = record.areas.filter((area) =>
+    [area.necessidade, area.acoes, area.prazoResponsavel].some((value) => value?.trim()),
+  );
+  if (populatedAreas.length) {
+    nextHeading("Áreas de atendimento e avaliação");
+    for (const area of populatedAreas) {
+      doc.font("Helvetica-Bold").text(labelFor(area.area));
+      line("Situação / necessidade", area.necessidade);
+      line("Ações / encaminhamentos", area.acoes);
+      line("Prazo / responsável", area.prazoResponsavel);
+      doc.moveDown(0.25);
+    }
   }
 
-  heading(5, "Encaminhamentos");
-  for (const referral of record.encaminhamentos) {
-    line("Data / área", `${formatBrazilianDate(referral.date)} · ${labelFor(referral.area)}`);
-    line(
-      "Destino",
-      `${labelFor(referral.destination)}${referral.destinationDetail ? ` · ${referral.destinationDetail}` : ""}`,
-    );
-    line("Motivo", referral.reason);
-    line("Retorno", referral.returnNotes);
-    line("Situação", labelFor(referral.status));
-    doc.moveDown(0.25);
+  if (record.goals.length) {
+    nextHeading("Objetivos e metas");
+    for (const goal of record.goals) {
+      doc.font("Helvetica-Bold").text(goal.objetivo);
+      line("Meta", goal.meta);
+      line("Ações", goal.acoes);
+      line("Prazo", formatBrazilianDate(goal.prazo));
+      line("Avaliação", labelFor(goal.avaliacao));
+      doc.moveDown(0.25);
+    }
   }
 
-  heading(6, "Evoluções e acompanhamento");
-  for (const evolution of record.evolucoes) {
-    line(
-      "Data / área / profissional",
-      `${formatBrazilianDate(evolution.date)} · ${labelFor(evolution.area)} · ${evolution.author.name ?? "Equipe técnica"}`,
-    );
-    line("Registro", evolution.content);
-    line("Novas metas", evolution.newGoals);
-    doc.moveDown(0.25);
+  if (record.encaminhamentos.length) {
+    nextHeading("Encaminhamentos");
+    for (const referral of record.encaminhamentos) {
+      line("Data / área", `${formatBrazilianDate(referral.date)} · ${labelFor(referral.area)}`);
+      line(
+        "Destino",
+        `${labelFor(referral.destination)}${referral.destinationDetail ? ` · ${referral.destinationDetail}` : ""}`,
+      );
+      line("Motivo", referral.reason);
+      line("Retorno", referral.returnNotes);
+      line("Situação", labelFor(referral.status));
+      doc.moveDown(0.25);
+    }
   }
 
-  heading(7, "Assinaturas");
-  for (const signature of record.signatures) {
-    line(`${labelFor(signature.signerType)} · ${signature.signerName}`, formatBrazilianDate(signature.signedAt));
-    const encoded = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(signature.imageDataUrl)?.[1];
-    if (encoded) {
-      try {
-        doc.image(Buffer.from(encoded, "base64"), { fit: [220, 55] }).moveDown(0.4);
-      } catch {
-        doc.text("Assinatura registrada.");
+  if (record.evolucoes.length) {
+    nextHeading("Evoluções e acompanhamento");
+    for (const evolution of record.evolucoes) {
+      line(
+        "Data / área / profissional",
+        `${formatBrazilianDate(evolution.date)} · ${labelFor(evolution.area)} · ${evolution.author.name ?? "Equipe técnica"}`,
+      );
+      line("Registro", evolution.content);
+      line("Novas metas", evolution.newGoals);
+      doc.moveDown(0.25);
+    }
+  }
+
+  if (record.signatures.length) {
+    nextHeading("Assinaturas");
+    for (const signature of record.signatures) {
+      const registry = signature.user?.professionalRegistry;
+      line(
+        `${labelFor(signature.signerType)} · ${signature.signerName}${registry ? ` · ${registry}` : ""}`,
+        formatBrazilianDate(signature.signedAt),
+      );
+      const encoded = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(signature.imageDataUrl)?.[1];
+      if (encoded) {
+        try {
+          doc.image(Buffer.from(encoded, "base64"), { fit: [220, 55] }).moveDown(0.4);
+        } catch {
+          doc.text("Assinatura registrada.");
+        }
       }
     }
   }
 
-  heading(8, "Reavaliações do PIA");
-  for (const review of record.reviews) {
-    line(
-      "Data / responsável",
-      `${formatBrazilianDate(review.date)} · ${review.responsavel ?? review.author.name ?? "Equipe técnica"}`,
-    );
-    line("Mudanças observadas", review.changes);
-    line("Novas metas", review.newGoals);
-    doc.moveDown(0.25);
+  if (record.reviews.length) {
+    nextHeading("Reavaliações do PIA");
+    for (const review of record.reviews) {
+      line(
+        "Data / responsável",
+        `${formatBrazilianDate(review.date)} · ${review.responsavel ?? review.author.name ?? "Equipe técnica"}`,
+      );
+      line("Mudanças observadas", review.changes);
+      line("Novas metas", review.newGoals);
+      doc.moveDown(0.25);
+    }
   }
 
   doc.moveDown(1);
@@ -192,11 +239,12 @@ function resolveUploadPath(root: string, relativePath: string) {
   return target;
 }
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const user = await requireTecnico();
   if (!isTecnico(user)) return new Response("Acesso restrito", { status: 403 });
   const allowedAreas = getTechnicalAreas(user) as Area[];
-  const record = await loadRecord(params.id, allowedAreas);
+  const record = await loadRecord(id, allowedAreas);
   if (!record || !isAtendidoEligible(record.aluno.vinculo)) return new Response("Acesso restrito", { status: 403 });
   const uploadRoot = path.resolve(process.env.UPLOAD_DIR ?? "./uploads");
   let buffer: Buffer;

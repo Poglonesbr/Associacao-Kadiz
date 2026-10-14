@@ -26,10 +26,11 @@ type SearchParams = {
   pageSize?: string;
 };
 
-export default async function StudentsPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function StudentsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const params = await searchParams;
   const user = await requirePermission("students:view");
-  const { page, pageSize, skip } = getPagination(searchParams.page, searchParams.pageSize);
-  const where = buildStudentWhere(searchParams);
+  const { page, pageSize, skip } = getPagination(params.page, params.pageSize);
+  const where = buildStudentWhere(params);
   const [students, total, polos, turmas] = await Promise.all([
     prisma.aluno.findMany({
       where,
@@ -49,7 +50,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Sea
 
   const exportParams = new URLSearchParams();
   for (const key of ["q", "polo", "turma", "vinculo", "status", "categoria"] as const) {
-    const value = searchParams[key];
+    const value = params[key];
     if (value) exportParams.set(key, value);
   }
   const exportHref = `/api/alunos${exportParams.size ? `?${exportParams}` : ""}`;
@@ -80,14 +81,14 @@ export default async function StudentsPage({ searchParams }: { searchParams: Sea
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
           <input
             name="q"
-            defaultValue={searchParams.q}
+            defaultValue={params.q}
             placeholder="Buscar aluno..."
             className="w-full rounded-lg border border-neutral-700 bg-neutral-950 py-2 pl-9 pr-3 text-sm"
           />
         </label>
         <select
           name="polo"
-          defaultValue={searchParams.polo ?? ""}
+          defaultValue={params.polo ?? ""}
           className="rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm"
         >
           <option value="">Todos os polos</option>
@@ -99,7 +100,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Sea
         </select>
         <select
           name="turma"
-          defaultValue={searchParams.turma ?? ""}
+          defaultValue={params.turma ?? ""}
           className="rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm"
         >
           <option value="">Todas as turmas</option>
@@ -111,7 +112,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Sea
         </select>
         <select
           name="categoria"
-          defaultValue={searchParams.categoria ?? ""}
+          defaultValue={params.categoria ?? ""}
           className="rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm"
         >
           <option value="">Todas as categorias</option>
@@ -123,7 +124,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Sea
         </select>
         <select
           name="vinculo"
-          defaultValue={searchParams.vinculo ?? ""}
+          defaultValue={params.vinculo ?? ""}
           className="rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm"
         >
           <option value="">Todos os vínculos</option>
@@ -132,7 +133,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Sea
         </select>
         <select
           name="status"
-          defaultValue={searchParams.status ?? ""}
+          defaultValue={params.status ?? ""}
           className="rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm"
         >
           <option value="">Todos os status</option>

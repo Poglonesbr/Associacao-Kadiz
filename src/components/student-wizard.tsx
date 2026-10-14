@@ -99,6 +99,8 @@ export function StudentWizard({
             <Field label="Número" name="addressNumber" />
             <Field label="Bairro" name="neighborhood" />
             <Field label="Cidade" name="city" />
+            <Field label="UF" name="state" defaultValue="SC" />
+            <Field label="CEP" name="postalCode" placeholder="88340-000" />
             <Field label="Escola" name="school" />
             <Field label="Série escolar" name="schoolGrade" />
             <SelectField
@@ -251,7 +253,7 @@ export function StudentWizard({
         <div data-step={5} className={step === 5 ? "space-y-4" : "hidden"}>
           <h2 className="mb-3 text-lg font-semibold">Plano financeiro</h2>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Mensalidade (R$)" name="monthlyFee" placeholder="Ex.: 250,00" />
+            <Field label="Mensalidade (R$)" name="monthlyFee" type="currency" placeholder="Ex.: 250,00" />
             <Field label="Dia de cobrança" name="billingDay" type="number" />
             <Field label="Nome para nota fiscal" name="invoiceName" />
             <Field label="CPF para nota fiscal" name="invoiceCpf" />

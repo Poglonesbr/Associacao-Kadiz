@@ -14,6 +14,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { logAccess } from "@/lib/audit";
 import { parseBrazilianDate } from "@/lib/dates";
+import { parseBrazilianCurrency } from "@/lib/money";
 import { requireTecnico } from "@/lib/guards";
 import { getTechnicalAreas } from "@/lib/permissions";
 import { isAtendidoEligible } from "@/lib/technical-access";
@@ -93,8 +94,9 @@ export async function updateAtendido(form: FormData) {
   const reviewDateInput = value(form, "nextReviewDate");
   const nextReviewDate = reviewDateInput ? parseBrazilianDate(reviewDateInput) : null;
   if (reviewDateInput && !nextReviewDate) throw new Error("Data de reavaliação inválida.");
-  const familyIncomeInput = value(form, "familyIncome").replace(",", ".");
-  const familyIncome = familyIncomeInput ? z.coerce.number().min(0).parse(familyIncomeInput) : null;
+  const familyIncomeInput = value(form, "familyIncome");
+  const familyIncome = familyIncomeInput ? parseBrazilianCurrency(familyIncomeInput) : null;
+  if (familyIncomeInput && (familyIncome === null || familyIncome < 0)) throw new Error("Renda familiar inválida.");
   const responsibleId = optional(value(form, "responsavelTecnicoId"));
   if (responsibleId) {
     const responsible = await prisma.user.findUnique({
