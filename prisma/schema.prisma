@@ -1,0 +1,504 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  COORDENADOR
+  SECRETARIA
+  PROFESSOR
+  PSICOLOGO
+  ASSISTENTE_SOCIAL
+  FINANCEIRO
+}
+
+enum PoloType {
+  SEDE
+  ESCOLA_POLO
+}
+
+enum Shift {
+  MANHA
+  TARDE
+  NOITE
+}
+
+enum Modality {
+  FUTEBOL
+  FUTSAL
+  XADREZ
+  REFORCO_ESCOLAR
+  HORTA
+  OUTRO
+}
+
+enum Vinculo {
+  PARTICULAR
+  PROJETO_SOCIAL
+}
+
+enum AlunoStatus {
+  ATIVO
+  INATIVO
+  LISTA_ESPERA
+  DESLIGADO
+}
+
+enum SchoolShift {
+  MATUTINO
+  VESPERTINO
+}
+
+enum DominantFoot {
+  DESTRO
+  CANHOTO
+  AMBIDESTRO
+}
+
+enum GuardianRelation {
+  MAE
+  PAI
+  AVO
+  TIO
+  IRMAO
+  TUTOR
+  OUTRO
+}
+
+enum HousingType {
+  PROPRIA
+  ALUGADA
+  CEDIDA
+  OCUPACAO
+  OUTRA
+}
+
+enum StudentDocumentType {
+  FICHA_CADASTRAL
+  RG
+  COMPROVANTE_RESIDENCIA
+  ATESTADO_MEDICO
+  CARTEIRA_VACINACAO
+  CARTAO_SUS
+  BOLETIM_ESCOLAR
+  ELETROCARDIOGRAMA
+  FOTO
+  TERMO_RESPONSABILIDADE
+}
+
+enum DocumentStatus {
+  PENDENTE
+  ENTREGUE
+  APROVADO
+  REJEITADO
+}
+
+enum AttendanceStatus {
+  PRESENTE
+  FALTA
+  FALTA_JUSTIFICADA
+}
+
+enum Area {
+  PSICOLOGIA
+  SERVICO_SOCIAL
+}
+
+enum AtendimentoStatus {
+  AGENDADO
+  REALIZADO
+  FALTOU
+  CANCELADO
+}
+
+enum AtendimentoType {
+  INDIVIDUAL
+  GRUPOTERAPIA
+  FAMILIAR
+  RODA_CONVERSA
+  APOIO_COMPETICAO
+  OFICINA_FAMILIAS
+  ESCUTA_QUALIFICADA
+  ACOLHIMENTO
+  VISITA_DOMICILIAR
+  ORIENTACAO_FAMILIAR
+  ARTICULACAO_REDE
+}
+
+enum ReferralDestination {
+  CRAS
+  CREAS
+  CAPSI
+  UBS
+  CONSELHO_TUTELAR
+  ESCOLA
+  PSICOLOGIA_INTERNA
+  SERVICO_SOCIAL_INTERNO
+  OUTRO
+}
+
+enum ReferralStatus {
+  ABERTO
+  EM_ANDAMENTO
+  CONCLUIDO
+  CANCELADO
+}
+
+enum AccessAction {
+  VIEW
+  CREATE
+  UPDATE
+  GRANT
+  REVOKE
+}
+
+enum StockCategory {
+  UNIFORME
+  DOACAO
+  MATERIAL_ESPORTIVO
+  ALIMENTO
+  OUTRO
+}
+
+enum StockMovementType {
+  ENTRADA
+  SAIDA
+  AJUSTE
+}
+
+enum InvoiceStatus {
+  PENDENTE
+  PAGO
+  CANCELADO
+}
+
+enum PaymentMethod {
+  PIX
+  DINHEIRO
+  CARTAO
+  BOLETO
+  TRANSFERENCIA
+}
+
+enum FinanceType {
+  RECEITA
+  DESPESA
+}
+
+enum TaskPriority {
+  BAIXA
+  MEDIA
+  ALTA
+}
+
+enum TaskStatus {
+  ABERTA
+  EM_ANDAMENTO
+  CONCLUIDA
+}
+
+enum EventCategory {
+  TREINO
+  JOGO
+  EVENTO
+  REUNIAO
+  OFICINA_FAMILIAS
+  SABADO_EM_FAMILIA
+  OUTRO
+}
+
+model User {
+  id                   String              @id @default(cuid())
+  name                 String
+  email                String              @unique
+  passwordHash         String
+  phone                String?
+  professionalRegistry String?
+  jobTitle             String?
+  role                 Role
+  active               Boolean             @default(true)
+  accessPsicologia     Boolean             @default(false)
+  accessServicoSocial  Boolean             @default(false)
+  createdAt            DateTime            @default(now())
+  turmas               Turma[]             @relation("TurmaProfessor")
+  documentsReviewed    StudentDocument[]   @relation("DocumentReviewer")
+  attendanceSessions   AttendanceSession[] @relation("AttendanceTakenBy")
+  accessLogs           AccessLog[]
+  tasksAssigned        Task[]              @relation("TaskAssignee")
+  tasksCreated         Task[]              @relation("TaskCreator")
+  financeEntries       FinanceEntry[]
+  stockMovements       StockMovement[]
+}
+
+model Polo {
+  id        String   @id @default(cuid())
+  name      String
+  type      PoloType
+  address   String?
+  active    Boolean  @default(true)
+  turmas    Turma[]
+  alunos    Aluno[]
+  events    Event[]
+  createdAt DateTime @default(now())
+}
+
+model Turma {
+  id          String              @id @default(cuid())
+  name        String
+  poloId      String
+  professorId String?
+  shift       Shift
+  weekdays    String[]            @default([])
+  startTime   String
+  endTime     String
+  modality    Modality
+  active      Boolean             @default(true)
+  polo        Polo                @relation(fields: [poloId], references: [id], onDelete: Cascade)
+  professor   User?               @relation("TurmaProfessor", fields: [professorId], references: [id], onDelete: SetNull)
+  alunos      Aluno[]
+  sessions    AttendanceSession[]
+  createdAt   DateTime            @default(now())
+
+  @@index([poloId])
+  @@index([professorId])
+}
+
+model Aluno {
+  id                   String             @id @default(cuid())
+  matricula            String             @unique
+  vinculo              Vinculo
+  status               AlunoStatus        @default(ATIVO)
+  poloId               String
+  turmaId              String?
+  enrolledAt           DateTime           @default(now())
+  startDate            DateTime?
+  fullName             String
+  birthDate            DateTime
+  cpf                  String?
+  rg                   String?
+  sex                  String?
+  ethnicity            String?
+  naturalidade         String?
+  address              String?
+  addressNumber        String?
+  neighborhood         String?
+  city                 String?
+  school               String?
+  schoolGrade          String?
+  schoolShift          SchoolShift?
+  position             String?
+  shirtNumber          String?
+  dominantFoot         DominantFoot?
+  weekdays             String[]           @default([])
+  guardianName         String
+  guardianRelation     GuardianRelation
+  householdSize        Int?
+  guardianPhone        String?
+  guardianEmail        String?
+  guardianCpf          String?
+  motherName           String?
+  motherJob            String?
+  motherPhone          String?
+  fatherName           String?
+  fatherJob            String?
+  fatherPhone          String?
+  otherGuardian        String?
+  hasHealthPlan        Boolean?
+  bloodType            String?
+  chronicDisease       String?
+  continuousMedication String?
+  allergies            String?
+  foodRestrictions     String?
+  surgeries            String?
+  psychFollowUp        Boolean            @default(false)
+  difficulties         String[]           @default([])
+  difficultiesOther    String?
+  susCard              String?
+  medicalNotes         String?
+  emergencyName        String?
+  emergencyRelation    String?
+  emergencyPhone       String?
+  authTrips            Boolean            @default(false)
+  authImage            Boolean            @default(false)
+  authTermsAccepted    Boolean            @default(false)
+  monthlyFee           Decimal?           @db.Decimal(10, 2)
+  billingDay           Int?
+  invoiceName          String?
+  invoiceCpf           String?
+  invoiceEmail         String?
+  hasUniform           Boolean            @default(false)
+  exitDate             DateTime?
+  exitReason           String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  polo                 Polo               @relation(fields: [poloId], references: [id])
+  turma                Turma?             @relation(fields: [turmaId], references: [id], onDelete: SetNull)
+  documents            StudentDocument[]
+  attendanceRecords    AttendanceRecord[]
+  stockMovements       StockMovement[]
+  invoices             Invoice[]
+
+  @@index([fullName])
+  @@index([poloId, turmaId, vinculo, status])
+}
+
+model StudentDocument {
+  id           String              @id @default(cuid())
+  alunoId      String
+  type         StudentDocumentType
+  status       DocumentStatus      @default(PENDENTE)
+  filePath     String?
+  fileName     String?
+  deliveredAt  DateTime?
+  validUntil   DateTime?
+  notes        String?
+  reviewedById String?
+  aluno        Aluno               @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  reviewedBy   User?               @relation("DocumentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([alunoId, type])
+  @@index([status, type])
+}
+
+model AttendanceSession {
+  id        String             @id @default(cuid())
+  turmaId   String
+  date      DateTime
+  takenById String
+  notes     String?
+  turma     Turma              @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  takenBy   User               @relation("AttendanceTakenBy", fields: [takenById], references: [id])
+  records   AttendanceRecord[]
+
+  @@unique([turmaId, date])
+}
+
+model AttendanceRecord {
+  id            String            @id @default(cuid())
+  sessionId     String
+  alunoId       String
+  status        AttendanceStatus
+  justification String?
+  session       AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  aluno         Aluno             @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, alunoId])
+  @@index([alunoId, status])
+}
+
+model AccessLog {
+  id         String       @id @default(cuid())
+  userId     String
+  action     AccessAction
+  resource   String
+  resourceId String?
+  alunoId    String?
+  createdAt  DateTime     @default(now())
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([resource, createdAt])
+  @@index([alunoId, createdAt])
+}
+
+model StockItem {
+  id          String          @id @default(cuid())
+  name        String
+  category    StockCategory
+  size        String?
+  unit        String          @default("un")
+  quantity    Int             @default(0)
+  minQuantity Int             @default(0)
+  notes       String?
+  movements   StockMovement[]
+  createdAt   DateTime        @default(now())
+}
+
+model StockMovement {
+  id       String            @id @default(cuid())
+  itemId   String
+  type     StockMovementType
+  quantity Int
+  alunoId  String?
+  donor    String?
+  reason   String?
+  userId   String
+  date     DateTime          @default(now())
+  item     StockItem         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  aluno    Aluno?            @relation(fields: [alunoId], references: [id], onDelete: SetNull)
+  user     User              @relation(fields: [userId], references: [id])
+
+  @@index([itemId, date])
+}
+
+model Invoice {
+  id             String         @id @default(cuid())
+  alunoId        String
+  referenceMonth String
+  amount         Decimal        @db.Decimal(10, 2)
+  dueDate        DateTime
+  status         InvoiceStatus  @default(PENDENTE)
+  paidAt         DateTime?
+  paymentMethod  PaymentMethod?
+  notes          String?
+  aluno          Aluno          @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+
+  @@unique([alunoId, referenceMonth])
+  @@index([status, dueDate])
+}
+
+model FinanceEntry {
+  id          String      @id @default(cuid())
+  type        FinanceType
+  category    String
+  description String
+  amount      Decimal     @db.Decimal(10, 2)
+  date        DateTime    @default(now())
+  source      String?
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+
+  @@index([date, type])
+}
+
+model Task {
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  category    String?
+  priority    TaskPriority @default(MEDIA)
+  status      TaskStatus   @default(ABERTA)
+  dueDate     DateTime?
+  assigneeId  String?
+  createdById String
+  assignee    User?        @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdBy   User         @relation("TaskCreator", fields: [createdById], references: [id])
+  createdAt   DateTime     @default(now())
+}
+
+model Event {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  start       DateTime
+  end         DateTime?
+  allDay      Boolean       @default(false)
+  category    EventCategory @default(OUTRO)
+  poloId      String?
+  polo        Polo?         @relation(fields: [poloId], references: [id], onDelete: SetNull)
+}
+
+model Snack {
+  id        String   @id @default(cuid())
+  date      DateTime
+  time      String
+  menu      String
+  location  String
+  notes     String?
+  createdAt DateTime @default(now())
+}
