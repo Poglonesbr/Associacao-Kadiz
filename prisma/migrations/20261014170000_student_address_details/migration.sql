@@ -1,0 +1,3 @@
+ALTER TABLE "Aluno"
+ADD COLUMN "state" TEXT,
+ADD COLUMN "postalCode" TEXT;
