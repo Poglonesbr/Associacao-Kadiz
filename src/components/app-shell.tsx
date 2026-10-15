@@ -42,6 +42,7 @@ const groups: { title: string; links: { label: string; href: string; icon: typeo
       title: "Operação",
       links: [
         { label: "Polos e Turmas", href: "/polos", icon: School, permission: "poles" },
+        { label: "Objetivos e Metas", href: "/objetivos", icon: ClipboardCheck, permission: "objectives" },
         { label: "Chamada", href: "/chamada", icon: ClipboardList, permission: "attendance" },
         { label: "Agenda", href: "/agenda", icon: CalendarDays, permission: "calendar" },
         { label: "Tarefas", href: "/tarefas", icon: ClipboardCheck, permission: "tasks" },
@@ -75,6 +76,7 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [light, setLight] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const initials = (user.name ?? user.email ?? "K")
@@ -85,8 +87,16 @@ export function AppShell({
     .toUpperCase();
   return (
     <div className={`min-h-screen md:flex ${light ? "bg-neutral-100 text-neutral-900" : "bg-[#0a0a0a] text-white"}`}>
+      {mobileOpen && (
+        <button
+          type="button"
+          aria-label="Fechar menu"
+          onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 z-30 bg-black/70 md:hidden"
+        />
+      )}
       <aside
-        className={`sticky top-0 z-20 hidden h-screen shrink-0 border-r border-neutral-800 bg-[#151515] transition-all md:flex md:flex-col ${collapsed ? "w-[76px]" : "w-60"}`}
+        className={`fixed inset-y-0 left-0 z-40 flex h-screen w-60 shrink-0 -translate-x-full flex-col border-r border-neutral-800 bg-[#151515] transition-transform md:sticky md:top-0 md:z-20 md:translate-x-0 ${mobileOpen ? "translate-x-0" : ""} ${collapsed ? "md:w-[76px]" : "md:w-60"}`}
       >
         <Link href="/" className="flex h-16 items-center gap-3 border-b border-neutral-800 px-5">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 font-bold text-black">
@@ -121,6 +131,7 @@ export function AppShell({
                         title={collapsed ? label : undefined}
                         key={href}
                         href={href}
+                        onClick={() => setMobileOpen(false)}
                         className={`flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm ${active ? "bg-neutral-800 text-white" : "text-neutral-400 hover:bg-neutral-900 hover:text-white"}`}
                       >
                         <Icon size={17} />
@@ -144,7 +155,16 @@ export function AppShell({
               type="button"
               onClick={() => setCollapsed(!collapsed)}
               aria-label="Alternar menu"
-              className="rounded p-1.5 text-neutral-400 hover:bg-neutral-800"
+              className="hidden rounded p-1.5 text-neutral-400 hover:bg-neutral-800 md:block"
+            >
+              <Menu size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Abrir menu"
+              aria-expanded={mobileOpen}
+              className="rounded p-1.5 text-neutral-400 hover:bg-neutral-800 md:hidden"
             >
               <Menu size={18} />
             </button>
@@ -215,6 +235,7 @@ function pageName(path: string) {
         tarefas: "Tarefas",
         lanche: "Lanche",
         estoque: "Estoque",
+        objetivos: "Objetivos e Metas",
         auditoria: "Auditoria",
       } as Record<string, string>
     )[segment] ?? "Início"

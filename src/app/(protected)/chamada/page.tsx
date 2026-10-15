@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { format } from "date-fns";
+import { addDays, format, startOfWeek } from "date-fns";
 import { PageHeader, Panel, StatusBadge, EmptyState, DataTable } from "@/components/ui";
 import { AttendanceSheet } from "@/components/attendance-sheet";
 import { DateInput } from "@/components/date-input";
@@ -8,11 +8,13 @@ import { requirePermission } from "@/lib/guards";
 import { getPagination } from "@/lib/query-pagination";
 import { prisma } from "@/lib/prisma";
 import { canAccessTurma } from "@/lib/permissions";
+import { labelFor } from "@/lib/labels";
 import { hasDisengagementRisk, isInvoiceOverdueForTraining } from "@/lib/rules";
 
 export const dynamic = "force-dynamic";
 
 type SearchParams = { turma?: string; date?: string; tab?: string; page?: string; pageSize?: string };
+const weekdayMap: Record<string, number> = { DOM: 0, SEG: 1, TER: 2, QUA: 3, QUI: 4, SEX: 5, SAB: 6 };
 
 export default async function AttendancePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
@@ -134,11 +136,37 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
       student.vinculo === "PROJETO_SOCIAL" &&
       hasDisengagementRisk(absencesByStudent.get(student.id) ?? [], now.getFullYear()),
   );
+  const week = startOfWeek(now, { weekStartsOn: 1 });
+  const scheduleDays = Array.from({ length: 7 }, (_, index) => addDays(week, index));
 
   return (
     <>
       <PageHeader eyebrow="Controle de frequência" title="Chamada" />
       {tabs}
+      <Panel className="mb-5 overflow-hidden">
+        <div className="border-b border-neutral-800 px-4 py-3">
+          <h2 className="font-semibold">Agenda de treinos</h2>
+          <p className="mt-1 text-xs text-neutral-500">Selecione uma turma para abrir a chamada do dia.</p>
+        </div>
+        <div className="grid min-w-[760px] grid-cols-7 divide-x divide-neutral-800 overflow-x-auto">
+          {scheduleDays.map((day) => (
+            <div key={day.toISOString()} className="min-h-28">
+              <div className="border-b border-neutral-800 bg-neutral-950/50 px-2 py-2 text-center">
+                <p className="text-[10px] uppercase text-neutral-500">{format(day, "EEE")}</p>
+                <p className="font-semibold">{format(day, "dd")}</p>
+              </div>
+              <div className="space-y-1 p-2">
+                {turmas.filter((turma) => turma.weekdays.some((weekday) => weekdayMap[weekday] === day.getDay())).map((turma) => (
+                  <Link key={turma.id} href={`/chamada?turma=${turma.id}&date=${format(day, "yyyy-MM-dd")}`} className={`block rounded border p-2 text-[11px] ${turma.id === classId && today === format(day, "yyyy-MM-dd") ? "border-emerald-400 bg-emerald-950/40" : "border-neutral-700 bg-neutral-900 hover:border-emerald-500"}`}>
+                    <p className="font-semibold">{turma.startTime} · {turma.name}</p>
+                    <p className="truncate text-neutral-500">{turma.polo.name} · {labelFor(turma.modality)}</p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Panel>
       <form className="mb-5 grid gap-3 rounded-xl border border-neutral-800 bg-neutral-900 p-4 md:grid-cols-3">
         <label className="text-sm text-neutral-300">
           Polo / turma

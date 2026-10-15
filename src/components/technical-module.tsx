@@ -34,6 +34,7 @@ import { canViewTechnicalArea, getTechnicalAreas, isTecnico, type TechnicalArea 
 import { prisma } from "@/lib/prisma";
 import { requireTecnico, requireTechnicalDashboard } from "@/lib/guards";
 import { averageFollowUpMonths, getPiaReviewHealth } from "@/lib/technical-metrics";
+import { getPagination } from "@/lib/query-pagination";
 
 const tabs = [
   ["", "Painel"],
@@ -298,6 +299,7 @@ async function AtendidosList({
   const search = queryValue(searchParams.q).trim();
   const statusInput = queryValue(searchParams.status);
   const status = Object.values(AtendidoStatus).find((item) => item === statusInput);
+  const { page, pageSize, skip } = getPagination(queryValue(searchParams.page), queryValue(searchParams.pageSize));
   const where = {
     ...(status ? { status } : {}),
     aluno: {
@@ -313,11 +315,13 @@ async function AtendidosList({
         evolucoes: { where: { area: { in: allowedAreas as Area[] } }, select: { id: true } },
       },
       orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
+      skip,
+      take: pageSize,
     }),
     Promise.all([
       prisma.atendido.count({ where: { status: "ATIVO" } }),
       prisma.atendido.count({ where: { status: "ENCERRADO" } }),
-      prisma.atendido.count(),
+      prisma.atendido.count({ where }),
     ]),
     prisma.aluno.findMany({
       where: { vinculo: "PROJETO_SOCIAL", atendido: null, status: "ATIVO" },
@@ -357,8 +361,9 @@ async function AtendidosList({
       </form>
       <DataTable
         headers={["Atendido", "Idade", "Ingresso", "Próx. reavaliação", "Evol.", "Status"]}
-        count={attended.length}
-        footer={false}
+        count={counts[2]}
+        page={page}
+        pageSize={pageSize}
       >
         {attended.map((record) => {
           const overdue = record.nextReviewDate && record.nextReviewDate < new Date(new Date().setHours(0, 0, 0, 0));

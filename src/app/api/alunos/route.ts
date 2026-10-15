@@ -13,7 +13,9 @@ export async function GET(request: Request) {
   const user = await requirePermission("students:view");
   const includeFinancial = canViewStudentFinancial(user);
   const { searchParams } = new URL(request.url);
-  const students = await prisma.aluno.findMany({
+  const requestedLimit = Number(searchParams.get("limit"));
+  const limit = Number.isInteger(requestedLimit) && requestedLimit > 0 ? Math.min(requestedLimit, 5000) : 5000;
+  const exportedStudents = await prisma.aluno.findMany({
     where: buildStudentWhere({
       q: searchParams.get("q") ?? undefined,
       polo: searchParams.get("polo") ?? undefined,
@@ -24,7 +26,10 @@ export async function GET(request: Request) {
     }),
     include: { polo: true, turma: true },
     orderBy: { fullName: "asc" },
+    take: limit + 1,
   });
+  const truncated = exportedStudents.length > limit;
+  const students = exportedStudents.slice(0, limit);
   const columns = [
     "Matrícula",
     "Aluno",
@@ -62,6 +67,7 @@ export async function GET(request: Request) {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": 'attachment; filename="alunos.csv"',
       "Cache-Control": "no-store",
+      "X-Export-Truncated": truncated ? "true" : "false",
     },
   });
 }

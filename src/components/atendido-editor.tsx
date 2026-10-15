@@ -19,7 +19,10 @@ type GoalRow = { objetivo: string; meta: string | null; acoes: string | null; pr
 type Student = {
   id: string;
   fullName: string;
+  socialName: string | null;
   birthDate: Date;
+  cpf: string | null;
+  rg: string | null;
   matricula: string;
   polo: { name: string };
   turma: { name: string } | null;
@@ -40,6 +43,7 @@ type Student = {
   householdSize: number | null;
 };
 type TechnicalUser = { id: string; name: string | null; jobTitle: string | null };
+type Objective = { title: string; description: string | null };
 
 const controlClass =
   "w-full rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white placeholder:text-neutral-600 focus:border-emerald-500 focus:outline-none";
@@ -62,6 +66,7 @@ export function AtendidoEditor({
   areas: initialAreas,
   goals: initialGoals,
   technicalUsers,
+  objectives,
 }: {
   record: {
     id: string;
@@ -88,6 +93,7 @@ export function AtendidoEditor({
   areas: AreaRow[];
   goals: GoalRow[];
   technicalUsers: TechnicalUser[];
+  objectives: Objective[];
 }) {
   const [areas, setAreas] = useState(initialAreas);
   const [goals, setGoals] = useState(
@@ -125,12 +131,14 @@ export function AtendidoEditor({
         <div className="grid gap-4 md:grid-cols-3">
           {[
             ["Nome", student.fullName],
+            ["Nome social (se houver)", student.socialName ?? "—"],
             ["Nascimento", formatBrazilianDate(student.birthDate)],
+            ["CPF / RG", [student.cpf, student.rg].filter(Boolean).join(" / ") || "—"],
             ["Matrícula", student.matricula],
             ["Polo", student.polo.name],
             ["Turma", student.turma?.name ?? "Sem turma"],
             ["Responsável", student.guardianName],
-            ["Telefone do responsável", student.guardianPhone ?? "—"],
+            ["Telefone / contato", student.guardianPhone ?? "—"],
             ["E-mail do responsável", student.guardianEmail ?? "—"],
             ["Mãe", student.motherName ?? "—"],
             ["Pai", student.fatherName ?? "—"],
@@ -161,6 +169,13 @@ export function AtendidoEditor({
               <p className="mt-1 text-sm text-neutral-200">{value}</p>
             </div>
           ))}
+          <datalist id="pia-objectives">
+            {objectives.map((objective) => (
+              <option key={objective.title} value={objective.title}>
+                {objective.description ?? ""}
+              </option>
+            ))}
+          </datalist>
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           <DateInput
@@ -337,6 +352,7 @@ export function AtendidoEditor({
               <input
                 className={controlClass}
                 placeholder="Objetivo"
+                list="pia-objectives"
                 value={goal.objetivo}
                 onChange={(event) => updateGoal(index, "objetivo", event.target.value)}
               />

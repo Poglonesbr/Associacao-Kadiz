@@ -88,6 +88,7 @@ export function StudentWizard({
         <div data-step={1} className={step === 1 ? "space-y-4" : "hidden"}>
           <h2 className="mb-3 text-lg font-semibold">Dados do aluno</h2>
           <Field label="Nome completo" name="fullName" required />
+          <Field label="Nome social (se houver)" name="socialName" />
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Data de nascimento" name="birthDate" type="date" required />
             <Field label="CPF" name="cpf" />

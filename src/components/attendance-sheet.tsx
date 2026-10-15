@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useFormStatus } from "react-dom";
 import { saveAttendance } from "@/app/actions/chamada";
 import { Button, StatusBadge } from "@/components/ui";
 
@@ -16,6 +17,15 @@ export function AttendanceSheet({ turmaId, date, students }: { turmaId: string; 
       <input type="hidden" name="date" value={date} />
       <input type="hidden" name="records" value={JSON.stringify(records)} />
       <div className="mb-3 flex justify-end">
+        <div className="mr-auto flex gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setStatuses(Object.fromEntries(students.map((student) => [student.id, "FALTA"])))}
+          >
+            Marcar todos ausentes
+          </Button>
+        </div>
         <Button
           type="button"
           variant="secondary"
@@ -49,8 +59,13 @@ export function AttendanceSheet({ turmaId, date, students }: { turmaId: string; 
         ))}
       </div>
       <div className="mt-4 flex justify-end">
-        <Button>Salvar chamada</Button>
+        <SubmitAttendanceButton />
       </div>
     </form>
   );
+}
+
+function SubmitAttendanceButton() {
+  const { pending } = useFormStatus();
+  return <Button disabled={pending}>{pending ? "Salvando..." : "Salvar chamada"}</Button>;
 }

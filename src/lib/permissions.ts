@@ -9,6 +9,7 @@ export type Permission =
   | "attendance"
   | "attendance:all"
   | "poles"
+  | "objectives"
   | "stock"
   | "finance"
   | "tasks"
@@ -57,6 +58,7 @@ export function can(user: PermissionUser, permission: Permission): boolean {
     case "attendance:all":
       return office.includes(user.role);
     case "poles":
+    case "objectives":
     case "stock":
       return ["ADMIN", "COORDENADOR", "SECRETARIA"].includes(user.role);
     case "finance":

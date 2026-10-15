@@ -133,27 +133,28 @@ export function UserDialog({ user, roles }: { user?: UserRecord; roles: [string,
                   {user ? "Salvar" : "Criar usuário"}
                 </button>
               </div>
+              {user && (
+                <div className="flex flex-wrap items-end gap-3 border-t border-neutral-800 pt-5 md:col-span-2">
+                  <input type="hidden" name="id" value={user.id} />
+                  <label className="flex-1 space-y-1 text-sm">
+                    <span className="text-neutral-300">Redefinir senha</span>
+                    <input
+                      name="password"
+                      type="password"
+                      minLength={8}
+                      placeholder="Nova senha (mínimo 8 caracteres)"
+                      className="w-full rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2"
+                    />
+                  </label>
+                  <button
+                    formAction={resetUserPassword}
+                    className="rounded-lg border border-neutral-700 px-3 py-2 text-sm"
+                  >
+                    Redefinir
+                  </button>
+                </div>
+              )}
             </form>
-            {user && (
-              <form
-                action={resetUserPassword}
-                className="mt-5 flex flex-wrap items-end gap-3 border-t border-neutral-800 pt-5"
-              >
-                <input type="hidden" name="id" value={user.id} />
-                <label className="flex-1 space-y-1 text-sm">
-                  <span className="text-neutral-300">Redefinir senha</span>
-                  <input
-                    name="password"
-                    type="password"
-                    minLength={8}
-                    required
-                    placeholder="Nova senha (mínimo 8 caracteres)"
-                    className="w-full rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2"
-                  />
-                </label>
-                <button className="rounded-lg border border-neutral-700 px-3 py-2 text-sm">Redefinir</button>
-              </form>
-            )}
           </section>
         </div>
       )}

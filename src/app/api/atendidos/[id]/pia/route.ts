@@ -75,11 +75,13 @@ async function renderPdf(record: PdfRecord) {
   const nextHeading = (title: string) => heading(++sectionNumber, title);
   nextHeading("Identificação e dados socioeconômicos");
   line("Nome", record.aluno.fullName);
+  line("Nome social", record.aluno.socialName);
   line("Matrícula", record.aluno.matricula);
   line("Nascimento", formatBrazilianDate(record.aluno.birthDate));
+  line("CPF / RG", [record.aluno.cpf, record.aluno.rg].filter(Boolean).join(" / ") || null);
   line("Polo / turma", `${record.aluno.polo.name}${record.aluno.turma ? ` / ${record.aluno.turma.name}` : ""}`);
   line("Responsável", record.aluno.guardianName);
-  line("Telefone", record.aluno.guardianPhone);
+  line("Telefone / contato", record.aluno.guardianPhone);
   line("E-mail", record.aluno.guardianEmail);
   line("Mãe", record.aluno.motherName);
   line("Pai", record.aluno.fatherName);

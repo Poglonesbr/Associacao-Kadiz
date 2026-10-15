@@ -65,12 +65,19 @@ export async function createStudent(form: FormData) {
   const monthlyFee = parseBrazilianCurrency(monthlyFeeInput);
   if (monthlyFeeInput && (monthlyFee === null || monthlyFee < 0)) throw new Error("Mensalidade inválida.");
   const year = new Date().getFullYear();
-  const sequence = await prisma.aluno.count({ where: { matricula: { startsWith: `K${year}-` } } });
-  const student = await prisma.aluno.create({
+  const student = await prisma.$transaction(async (transaction) => {
+    const existingCount = await transaction.aluno.count({ where: { matricula: { startsWith: `K${year}-` } } });
+    const sequence = await transaction.matriculaSequence.upsert({
+      where: { year },
+      create: { year, nextValue: existingCount + 2 },
+      update: { nextValue: { increment: 1 } },
+    });
+    return transaction.aluno.create({
     data: {
-      matricula: `K${year}-${String(sequence + 1).padStart(4, "0")}`,
+      matricula: `K${year}-${String(sequence.nextValue - 1).padStart(4, "0")}`,
       ...data,
       birthDate: new Date(`${birthDateIso}T12:00:00`),
+      socialName: optional(value(form, "socialName")),
       startDate: startDateIso ? new Date(`${startDateIso}T12:00:00`) : null,
       turmaId,
       householdSize,
@@ -127,6 +134,7 @@ export async function createStudent(form: FormData) {
       invoiceCpf: optional(value(form, "invoiceCpf")),
       invoiceEmail: optional(value(form, "invoiceEmail")),
     },
+    });
   });
   await prisma.studentDocument.createMany({
     data: docTypes
@@ -177,6 +185,7 @@ export async function updateStudent(form: FormData) {
   }
   const data: Record<string, unknown> = {};
   const textFields = [
+    "socialName",
     "cpf",
     "rg",
     "sex",

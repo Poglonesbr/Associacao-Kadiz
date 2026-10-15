@@ -140,6 +140,7 @@ export default async function StudentDetailPage({ params, searchParams }: Props)
             <Section title="Identificação e matrícula">
               <div className="grid gap-4 md:grid-cols-2">
                 <Field label="Nome completo" name="fullName" defaultValue={student.fullName} required />
+                <Field label="Nome social (se houver)" name="socialName" defaultValue={student.socialName ?? ""} />
                 <SelectField
                   label="Vínculo"
                   name="vinculo"

@@ -64,17 +64,24 @@ export default async function AtendidoDetailPage({ params }: { params: Promise<{
       })),
     });
   }
-  const technicalUsers = await prisma.user.findMany({
-    where: {
-      OR: [
-        { accessPsicologia: true },
-        { accessServicoSocial: true },
-        { role: { in: ["PSICOLOGO", "ASSISTENTE_SOCIAL"] } },
-      ],
-    },
-    select: { id: true, name: true, jobTitle: true },
-    orderBy: { name: "asc" },
-  });
+  const [technicalUsers, objectives] = await Promise.all([
+    prisma.user.findMany({
+      where: {
+        OR: [
+          { accessPsicologia: true },
+          { accessServicoSocial: true },
+          { role: { in: ["PSICOLOGO", "ASSISTENTE_SOCIAL"] } },
+        ],
+      },
+      select: { id: true, name: true, jobTitle: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.objective.findMany({
+      where: { active: true },
+      select: { title: true, description: true },
+      orderBy: [{ order: "asc" }, { title: "asc" }],
+    }),
+  ]);
   const student = record.aluno;
 
   return (
@@ -100,6 +107,12 @@ export default async function AtendidoDetailPage({ params }: { params: Promise<{
             href={`/api/atendidos/${record.id}/pia`}
           >
             Gerar PDF do PIA
+          </Link>
+          <Link
+            className="rounded-lg border border-neutral-700 px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800"
+            href={`/api/atendidos/${record.id}/pia/word`}
+          >
+            Exportar Word
           </Link>
         </div>
       </div>
@@ -157,7 +170,10 @@ export default async function AtendidoDetailPage({ params }: { params: Promise<{
         student={{
           id: student.id,
           fullName: student.fullName,
+          socialName: student.socialName,
           birthDate: student.birthDate,
+          cpf: student.cpf,
+          rg: student.rg,
           matricula: student.matricula,
           polo: student.polo,
           turma: student.turma,
@@ -192,6 +208,7 @@ export default async function AtendidoDetailPage({ params }: { params: Promise<{
           avaliacao: goal.avaliacao,
         }))}
         technicalUsers={technicalUsers}
+        objectives={objectives}
       />
 
       <Panel className="mt-5 p-5">

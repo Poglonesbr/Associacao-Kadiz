@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Download, Search } from "lucide-react";
@@ -47,6 +48,16 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
       orderBy: [{ polo: { name: "asc" } }, { name: "asc" }],
     }),
   ]);
+  const sortedStudents = [...students].sort((a, b) => {
+    const poloGroup = (a.polo.type === "SEDE" ? 0 : 1) - (b.polo.type === "SEDE" ? 0 : 1);
+    return (
+      poloGroup ||
+      a.polo.name.localeCompare(b.polo.name, "pt-BR") ||
+      a.vinculo.localeCompare(b.vinculo) ||
+      (a.turma?.name ?? "Sem turma").localeCompare(b.turma?.name ?? "Sem turma", "pt-BR", { numeric: true }) ||
+      a.fullName.localeCompare(b.fullName, "pt-BR")
+    );
+  });
 
   const exportParams = new URLSearchParams();
   for (const key of ["q", "polo", "turma", "vinculo", "status", "categoria"] as const) {
@@ -153,56 +164,79 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
         page={page}
         pageSize={pageSize}
       >
-        {students.length ? (
-          students.map((student) => (
-            <tr key={student.id} className="text-sm">
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-800 text-xs">
-                    {student.fullName
-                      .split(" ")
-                      .slice(0, 2)
-                      .map((part) => part[0])
-                      .join("")}
-                  </span>
-                  <div>
-                    <Link className="font-medium text-white hover:text-emerald-400" href={`/alunos/${student.id}`}>
-                      {student.fullName}
-                    </Link>
-                    <p className="text-xs text-neutral-500">
-                      {student.matricula} · {student.vinculo === "PROJETO_SOCIAL" ? "Projeto Social" : "Particular"}
-                    </p>
-                  </div>
-                </div>
-              </td>
-              <td className="px-4 py-3 text-neutral-300">
-                {student.polo.name}
-                <p className="text-xs text-neutral-500">{student.turma?.name ?? "Sem turma"}</p>
-              </td>
-              <td className="px-4 py-3 text-neutral-400">{getCategory(student.birthDate)}</td>
-              <td className="px-4 py-3 text-neutral-300">
-                {format(student.birthDate, "dd/MM/yyyy", { locale: ptBR })}
-                <p className="text-xs text-neutral-500">{getAge(student.birthDate)} anos</p>
-              </td>
-              <td className="px-4 py-3">
-                <StatusBadge
-                  tone={student.status === "ATIVO" ? "green" : student.status === "DESLIGADO" ? "red" : "neutral"}
-                >
-                  {labelFor(student.status)}
-                </StatusBadge>
-              </td>
-              <td className="px-4 py-3 text-neutral-400">
-                {format(student.enrolledAt, "dd MMM yyyy", { locale: ptBR })}
-              </td>
-              <td className="px-4 py-3">
-                <StudentRowActions
-                  studentId={student.id}
-                  status={student.status}
-                  canWrite={can(user, "students:write")}
-                />
-              </td>
-            </tr>
-          ))
+        {sortedStudents.length ? (
+          sortedStudents.map((student, index) => {
+            const previous = sortedStudents[index - 1];
+            const group =
+              !previous ||
+              previous.polo.type !== student.polo.type ||
+              previous.polo.id !== student.polo.id ||
+              previous.vinculo !== student.vinculo ||
+              (previous.turma?.id ?? "none") !== (student.turma?.id ?? "none");
+            return (
+              <Fragment key={student.id}>
+                {group && (
+                  <tr key={`${student.id}-group`} className="bg-neutral-950">
+                    <td
+                      colSpan={7}
+                      className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-300"
+                    >
+                      {student.polo.type === "SEDE" ? "Sede" : "Polo"} · {student.polo.name} ·{" "}
+                      {student.vinculo === "PROJETO_SOCIAL" ? "Projeto Social" : "Particular"} ·{" "}
+                      {student.turma?.name ?? "Sem turma"}
+                    </td>
+                  </tr>
+                )}
+                <tr className="text-sm">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-800 text-xs">
+                        {student.fullName
+                          .split(" ")
+                          .slice(0, 2)
+                          .map((part) => part[0])
+                          .join("")}
+                      </span>
+                      <div>
+                        <Link className="font-medium text-white hover:text-emerald-400" href={`/alunos/${student.id}`}>
+                          {student.fullName}
+                        </Link>
+                        <p className="text-xs text-neutral-500">
+                          {student.matricula} · {student.vinculo === "PROJETO_SOCIAL" ? "Projeto Social" : "Particular"}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-neutral-300">
+                    {student.polo.name}
+                    <p className="text-xs text-neutral-500">{student.turma?.name ?? "Sem turma"}</p>
+                  </td>
+                  <td className="px-4 py-3 text-neutral-400">{getCategory(student.birthDate)}</td>
+                  <td className="px-4 py-3 text-neutral-300">
+                    {format(student.birthDate, "dd/MM/yyyy", { locale: ptBR })}
+                    <p className="text-xs text-neutral-500">{getAge(student.birthDate)} anos</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusBadge
+                      tone={student.status === "ATIVO" ? "green" : student.status === "DESLIGADO" ? "red" : "neutral"}
+                    >
+                      {labelFor(student.status)}
+                    </StatusBadge>
+                  </td>
+                  <td className="px-4 py-3 text-neutral-400">
+                    {format(student.enrolledAt, "dd MMM yyyy", { locale: ptBR })}
+                  </td>
+                  <td className="px-4 py-3">
+                    <StudentRowActions
+                      studentId={student.id}
+                      status={student.status}
+                      canWrite={can(user, "students:write")}
+                    />
+                  </td>
+                </tr>
+              </Fragment>
+            );
+          })
         ) : (
           <tr>
             <td colSpan={7}>

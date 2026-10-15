@@ -7,10 +7,10 @@ import { labelFor } from "@/lib/labels";
 
 export function PageHeader({ eyebrow, title, action }: { eyebrow: string; title: string; action?: ReactNode }) {
   return (
-    <div className="mb-6 flex items-end justify-between gap-4">
+    <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[.14em] text-emerald-400">{eyebrow}</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white">{title}</h1>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white sm:text-3xl">{title}</h1>
       </div>
       {action}
     </div>
@@ -63,7 +63,7 @@ export function DataTable({
   return (
     <Panel className="overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
+        <table className="w-full min-w-[680px] text-left text-sm">
           <thead className="border-b border-neutral-800 text-xs uppercase tracking-wide text-neutral-500">
             <tr>
               {headers.map((header) => (
